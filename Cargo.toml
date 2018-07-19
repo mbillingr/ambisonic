@@ -2,5 +2,12 @@
 name = "ambisonic"
 version = "0.1.0"
 authors = ["Martin Billinger <flkazemakase@gmail.com>"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/mbillingr/ambionics"
+
+categories = ["multimedia", "game engines"]
+keywords = ["audio", "ambionics", "3D", "sound", "gamedev"]
 
 [dependencies]
+cpal = "0.8"
+rodio = "0.8"
