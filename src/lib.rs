@@ -2,8 +2,8 @@ extern crate cpal;
 pub extern crate rodio;
 
 mod bformat;
-mod bstream;
 mod bmixer;
+mod bstream;
 mod renderer;
 
 use std::sync::Arc;
@@ -37,7 +37,7 @@ impl AmbisonicBuilder {
         }
     }
 
-    pub fn build(self) -> Engine {
+    pub fn build(self) -> Ambisonic {
         let device = self.device
             .unwrap_or_else(|| rodio::default_output_device().unwrap());
         let sink = rodio::Sink::new(&device);
@@ -47,14 +47,11 @@ impl AmbisonicBuilder {
 
         sink.append(output);
 
-        Engine {
-            sink,
-            controller,
-        }
+        Ambisonic { sink, controller }
     }
 }
 
-pub struct Engine {
+pub struct Ambisonic {
     sink: rodio::Sink,
     controller: Arc<BmixerController>,
 }
@@ -70,13 +67,18 @@ mod tests {
         let engine = AmbisonicBuilder::new().build();
 
         let source = rodio::source::SineWave::new(440);
-        engine.controller.play(source, [1.0, 0.0, 0.0]);
+        let first = engine.controller.play(source, [1.0, 0.0, 0.0]);
 
         sleep(Duration::from_millis(1000));
 
         let source = rodio::source::SineWave::new(330);
-        engine.controller.play(source, [-1.0, 0.0, 0.0]);
+        let second = engine.controller.play(source, [-1.0, 0.0, 0.0]);
 
-        sleep(Duration::from_millis(2000));
+        sleep(Duration::from_millis(1000));
+
+        first.stop();
+        second.set_position([0.0, 1.0, 0.0]);
+
+        sleep(Duration::from_millis(1000));
     }
 }
