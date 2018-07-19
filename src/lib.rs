@@ -6,6 +6,31 @@ use std::time::Duration;
 use cpal::{Sample as CpalSample, SampleFormat};
 use rodio::{Sample, Source};
 
+
+#[derive(Copy, Clone)]
+struct Bweights {
+    w: f32,
+    x: f32,
+    y: f32,
+    z: f32,
+}
+
+impl Bweights {
+    fn dot(&self, b: Bformat) -> f32 {
+        self.w * b.w + self.x * b.x + self.y * b.y + self.z * b.z
+    }
+
+    fn virtual_microphone(direction: [f32; 3], p: f32) -> Bweights {
+        Bweights {
+            w: p * 2f32.sqrt(),
+            x: direction[0] * (1.0 - p),
+            y: direction[1] * (1.0 - p),
+            z: direction[2] * (1.0 - p),
+        }
+    }
+}
+
+
 #[derive(Copy, Clone)]
 struct Bformat {
     w: f32,
@@ -80,6 +105,8 @@ unsafe impl CpalSample for Bformat {
 }
 
 struct BstreamStereoRenderer {
+    left_mic: Bweights,
+    right_mic: Bweights,
     buffered_sample: Option<f32>,
     bstream: Source<Item = Bformat>,
 }
@@ -114,7 +141,13 @@ impl Iterator for BstreamStereoRenderer {
             Some(s) => Some(s),
             None => {
                 let sample = self.bstream.next()?;
-                unimplemented!()
+
+                let left = self.left_mic.dot(sample);
+                let right = self.right_mic.dot(sample);
+
+                // emit left channel now, and right channel next time
+                self.buffered_sample = Some(right);
+                Some(left)
             }
         }
     }
