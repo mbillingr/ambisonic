@@ -16,19 +16,40 @@ struct Bformat {
 
 impl Sample for Bformat {
     fn lerp(first: Self, second: Self, numerator: u32, denominator: u32) -> Self {
-        unimplemented!()
+        let alpha = numerator as f32 / denominator as f32;
+        Bformat {
+            w: first.w * alpha + second.w * (1.0 - alpha),
+            x: first.x * alpha + second.x * (1.0 - alpha),
+            y: first.y * alpha + second.y * (1.0 - alpha),
+            z: first.z * alpha + second.z * (1.0 - alpha),
+        }
     }
 
-    fn amplify(self, value: f32) -> Self {
-        unimplemented!()
+    fn amplify(self, alpha: f32) -> Self {
+        Bformat {
+            w: self.w * alpha,
+            x: self.x * alpha,
+            y: self.y * alpha,
+            z: self.z * alpha,
+        }
     }
 
     fn saturating_add(self, other: Self) -> Self {
-        unimplemented!()
+        Bformat {
+            w: self.w + other.w,
+            x: self.x + other.x,
+            y: self.y + other.y,
+            z: self.z + other.z,
+        }
     }
 
     fn zero_value() -> Self {
-        unimplemented!()
+        Bformat {
+            w: 0.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 }
 
