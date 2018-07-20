@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Martin Billinger <flkazemakase@gmail.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/mbillingr/ambionics"
+description = "Compose and play 3D audio."
 
 categories = ["multimedia", "game engines"]
 keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]
