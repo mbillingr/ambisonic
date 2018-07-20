@@ -2,10 +2,9 @@
 
 use std::time::Duration;
 
-use rodio::{Sample, Source};
+use rodio::Source;
 
 use bformat::{Bformat, Bweights};
-use bmixer::BstreamMixer;
 
 /// Render a *B-format* stream to a stereo representation.
 ///

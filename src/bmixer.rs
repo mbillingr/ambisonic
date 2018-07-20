@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use rodio::{Sample, Source};
 
-use bformat::{Bformat, Bweights};
+use bformat::Bformat;
 use bstream::{self, Bstream, BstreamController};
 
 /// Construct a 3D sound mixer and associated sound composer.

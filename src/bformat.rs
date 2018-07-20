@@ -1,7 +1,7 @@
 //! *B-format* representation of audio samples
 
 use cpal::{Sample as CpalSample, SampleFormat};
-use rodio::{Sample, Source};
+use rodio::Sample;
 
 /// Audio sample in first-order *B-format*.
 ///
@@ -109,8 +109,7 @@ impl Bweights {
     /// microphone, `p==0` to a bi-directional microphone, and `p==0.5` to a cardioid microphone
     /// (https://en.wikipedia.org/wiki/Microphone#Polar_patterns).
     pub fn virtual_microphone(direction: [f32; 3], p: f32) -> Self {
-        let l = (direction[0] * direction[0]
-            + direction[1] * direction[1]
+        let l = (direction[0] * direction[0] + direction[1] * direction[1]
             + direction[1] * direction[2])
             .sqrt();
         Bweights {

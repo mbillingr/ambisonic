@@ -19,7 +19,8 @@ mod renderer;
 
 use std::sync::Arc;
 
-use bmixer::BmixerController;
+use bmixer::BmixerComposer;
+use bstream::BstreamController;
 
 /// A builder object for creating `Ambisonic` contexts
 pub struct AmbisonicBuilder {
@@ -30,7 +31,7 @@ pub struct AmbisonicBuilder {
 impl AmbisonicBuilder {
     /// Create a new builder with default settings
     pub fn new() -> Self {
-        self::default()
+        Self::default()
     }
 
     /// Build the ambisonic context
@@ -44,7 +45,10 @@ impl AmbisonicBuilder {
 
         sink.append(output);
 
-        Ambisonic { sink, controller }
+        Ambisonic {
+            sink,
+            composer: controller,
+        }
     }
 
     /// Select device (defaults to `rodio::default_output_device()`
@@ -73,10 +77,27 @@ impl Default for AmbisonicBuilder {
     }
 }
 
-/// High-level Ambisonic Context
+/// High-level Ambisonic Context.
+///
+/// Stops playing all sounds when dropped.
 pub struct Ambisonic {
+    // disable warning that `sink` is unused. We need it to keep the audio alive.
+    #[allow(dead_code)]
     sink: rodio::Sink,
-    controller: Arc<BmixerController>,
+    composer: Arc<BmixerComposer>,
+}
+
+impl Ambisonic {
+    /// Add a single-channel `Source` to the sound scene at a position relative to the listener
+    ///
+    /// Returns a controller object that can be used to change the source position during playback.
+    #[inline(always)]
+    pub fn play<I>(&self, input: I, pos: [f32; 3]) -> Arc<BstreamController>
+    where
+        I: rodio::Source<Item = f32> + Send + 'static,
+    {
+        self.composer.play(input, pos)
+    }
 }
 
 #[cfg(test)]
@@ -90,17 +111,21 @@ mod tests {
         let engine = AmbisonicBuilder::new().build();
 
         let source = rodio::source::SineWave::new(440);
-        let first = engine.controller.play(source, [1.0, 0.0, 0.0]);
+        let first = engine.play(source, [1.0, 0.0, 0.0]);
 
         sleep(Duration::from_millis(1000));
 
         let source = rodio::source::SineWave::new(330);
-        let second = engine.controller.play(source, [-1.0, 0.0, 0.0]);
+        let second = engine.play(source, [-1.0, 0.0, 0.0]);
 
         sleep(Duration::from_millis(1000));
 
         first.stop();
         second.set_position([0.0, 1.0, 0.0]);
+
+        sleep(Duration::from_millis(1000));
+
+        drop(engine);
 
         sleep(Duration::from_millis(1000));
     }
