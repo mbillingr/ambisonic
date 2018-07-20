@@ -4,7 +4,7 @@
 //! It allows positioning and moving sound sources freely in 3D space around a virtual listener,
 //! and playing the resulting spatial mix in real-time over a sound card.
 //!
-//! `Ambisonic` is built around the concept of an intermediate representation of the sound field,
+//! `ambisonic` is built around the concept of an intermediate representation of the sound field,
 //! called *B-format*. The *B-format* describes what the listener should hear, independent of
 //! their audio playback equipment. This leads to a clear separation of audio scene composition and
 //! rendering. For details, see [Wikipedia](https://en.wikipedia.org/wiki/Ambisonics).
