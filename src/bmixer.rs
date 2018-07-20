@@ -1,3 +1,8 @@
+//! *B-format* mixer
+//!
+//! This module provides functionality for dynamically composing sound sources into a 3D sound
+//! scene.
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -7,8 +12,9 @@ use rodio::{Sample, Source};
 use bformat::{Bformat, Bweights};
 use bstream::{self, Bstream, BstreamController};
 
-pub fn bmixer(sample_rate: u32) -> (BstreamMixer, Arc<BmixerController>) {
-    let controller = Arc::new(BmixerController {
+/// Construct a 3D sound mixer and associated sound composer.
+pub fn bmixer(sample_rate: u32) -> (BstreamMixer, Arc<BmixerComposer>) {
+    let controller = Arc::new(BmixerComposer {
         sample_rate,
         pending_streams: Mutex::new(Vec::new()),
         has_pending: AtomicBool::new(false),
@@ -22,8 +28,12 @@ pub fn bmixer(sample_rate: u32) -> (BstreamMixer, Arc<BmixerController>) {
     (mixer, controller)
 }
 
+/// Combine all currently playing 3D sound sources into a single *B-format* stream.
+///
+/// The mixer implements `rodio::Source<Item = Bformat>`, which must be passed to a renderer before
+/// playback in a `rodio::Sink`.
 pub struct BstreamMixer {
-    controller: Arc<BmixerController>,
+    controller: Arc<BmixerComposer>,
     active_streams: Vec<Bstream>,
 }
 
@@ -81,19 +91,21 @@ impl Iterator for BstreamMixer {
     }
 }
 
-pub struct BmixerController {
+/// Compose the 3D sound scene
+pub struct BmixerComposer {
     has_pending: AtomicBool,
     pending_streams: Mutex<Vec<Bstream>>,
     sample_rate: u32,
 }
 
-impl BmixerController {
+impl BmixerComposer {
+    /// Add a single-channel `Source` to the sound scene at a position relative to the listener
+    ///
+    /// Returns a controller object that can be used to change the source position during playback.
     pub fn play<I>(&self, input: I, pos: [f32; 3]) -> Arc<BstreamController>
     where
         I: Source<Item = f32> + Send + 'static,
     {
-        assert_eq!(input.channels(), 1);
-
         let (bstream, sound_ctl) = bstream::bstream(input, pos);
 
         self.pending_streams

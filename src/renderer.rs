@@ -1,3 +1,5 @@
+//! Render *B-format* audio streams to streams suitable for playback on audio equipment.
+
 use std::time::Duration;
 
 use rodio::{Sample, Source};
@@ -5,6 +7,10 @@ use rodio::{Sample, Source};
 use bformat::{Bformat, Bweights};
 use bmixer::BstreamMixer;
 
+/// Render a *B-format* stream to a stereo representation.
+///
+/// Suitable for playback over two speakers arranged in front of the user.
+/// The default setting assumes a symmetric arrangement of +/- 45º.
 pub struct BstreamStereoRenderer<I> {
     input: I,
     buffered_sample: Option<f32>,
@@ -13,6 +19,7 @@ pub struct BstreamStereoRenderer<I> {
 }
 
 impl<I> BstreamStereoRenderer<I> {
+    /// Construct a new stereo renderer with default settings
     pub fn new(input: I) -> Self {
         BstreamStereoRenderer {
             input,

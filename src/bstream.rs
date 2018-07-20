@@ -1,3 +1,5 @@
+//! Represent audio sources in *B-format*.
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -6,10 +8,15 @@ use rodio::Source;
 
 use bformat::{Bformat, Bweights};
 
+/// Convert a `rodio::Source` to a spatial `Bstream` source with associated controller
+///
+/// The input source must produce `f32` samples and is expected to have exactly one channel.
 pub fn bstream<I: Source<Item = f32> + Send + 'static>(
     source: I,
     pos: [f32; 3],
 ) -> (Bstream, Arc<BstreamController>) {
+    assert_eq!(source.channels(), 1);
+
     let controller = Arc::new(BstreamController {
         commands: Mutex::new(Vec::new()),
         pending_commands: AtomicBool::new(false),
@@ -25,6 +32,9 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(
     (stream, controller)
 }
 
+/// Spatial source
+///
+/// Consumes samples from the inner source and converts them to *B-format* samples.
 pub struct Bstream {
     input: Box<Source<Item = f32> + Send>,
     bweights: Bweights,
@@ -95,6 +105,7 @@ enum Command {
     Stop,
 }
 
+/// Controls playback and position of spatial audio source
 pub struct BstreamController {
     commands: Mutex<Vec<Command>>,
     pending_commands: AtomicBool,
@@ -102,11 +113,13 @@ pub struct BstreamController {
 }
 
 impl BstreamController {
+    /// Set source position
     pub fn set_position(&self, pos: [f32; 3]) {
         self.commands.lock().unwrap().push(Command::SetPos(pos));
         self.pending_commands.store(true, Ordering::SeqCst);
     }
 
+    /// Stop playback
     pub fn stop(&self) {
         self.commands.lock().unwrap().push(Command::Stop);
         self.pending_commands.store(true, Ordering::SeqCst);
