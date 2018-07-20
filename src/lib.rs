@@ -175,4 +175,20 @@ mod tests {
         }
         sound.set_velocity([0.0, 0.0, 0.0]);
     }
+
+    #[test]
+    fn bench() {
+        use rodio::Source;
+
+        let scene = AmbisonicBuilder::default().build();
+
+        let mut f: u64 = 1;
+        for i in 0..850 {
+            f = (f + f*f * 7 + f*f*f * 3 + 1) % 800;
+            let source = rodio::source::SineWave::new(440).amplify(0.001);
+            let sound = scene.play(source);
+        }
+
+        sleep(Duration::from_secs(10));
+    }
 }
