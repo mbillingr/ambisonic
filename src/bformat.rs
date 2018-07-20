@@ -151,4 +151,20 @@ impl Bweights {
             z: self.z * s,
         }
     }
+
+    /// adjust weights towards target
+    pub fn approach(&mut self, target: &Bweights, max_step: f32) {
+        // if this turns out too slow we could try to replace it with simple steps along each dimension
+        let dir = [target.w - self.w, target.x - self.x, target.y - self.y, target.z - self.z];
+        let dist = (dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2] + dir[3] * dir[3]).sqrt();
+        if dist <= max_step {
+            *self = *target;
+        } else {
+            let d = max_step / dist;
+            self.w += dir[0] * d;
+            self.x += dir[1] * d;
+            self.y += dir[2] * d;
+            self.z += dir[3] * d;
+        }
+    }
 }

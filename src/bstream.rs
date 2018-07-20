@@ -31,6 +31,7 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, S
     let stream = Bstream {
         input: Box::new(source),
         bweights: Bweights::omni_source(),
+        target_weights: Bweights::omni_source(),
         speed: 1.0,
         sampling_offset: 0.0,
         previous_sample: 0.0,
@@ -46,12 +47,15 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, S
 /// Consumes samples from the inner source and converts them to *B-format* samples.
 pub struct Bstream {
     input: Box<Source<Item = f32> + Send>,
+    bridge: Arc<BstreamBridge>,
+
     bweights: Bweights,
+    target_weights: Bweights,
+
     speed: f32,
     sampling_offset: f32,
     previous_sample: f32,
     next_sample: f32,
-    bridge: Arc<BstreamBridge>,
 }
 
 impl Bstream {}
@@ -89,6 +93,7 @@ impl Iterator for Bstream {
             for cmd in commands.drain(..) {
                 match cmd {
                     Command::SetWeights(bw) => self.bweights = bw,
+                    Command::SetTarget(bw) => self.target_weights = bw,
                     Command::SetSpeed(s) => self.speed = s,
                     Command::Stop => {
                         self.bridge.stopped.store(true, Ordering::SeqCst);
@@ -99,6 +104,10 @@ impl Iterator for Bstream {
 
             self.bridge.pending_commands.store(false, Ordering::SeqCst);
         }
+
+        // adjusting the weights slowly avoids audio artifacts but prevents very fast position
+        // changes
+        self.bweights.approach(&self.target_weights, 0.001);
 
         while self.sampling_offset >= 1.0 {
             match self.input.next() {
@@ -124,6 +133,7 @@ impl Iterator for Bstream {
 
 enum Command {
     SetWeights(Bweights),
+    SetTarget(Bweights),
     SetSpeed(f32),
     Stop,
 }
@@ -154,6 +164,21 @@ impl SoundController {
             let mut cmds = self.bridge.commands.lock().unwrap();
             cmds.push(Command::SetSpeed(rate));
             cmds.push(Command::SetWeights(weights));
+            cmds.push(Command::SetTarget(weights));
+        }
+        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+    }
+    /// Adjust source position relative to listener
+    ///
+    /// The source transitions smoothly to the new position
+    pub fn adjust_position(&mut self, pos: [f32; 3]) {
+        self.position = pos;
+        let weights = Bweights::from_position(pos);
+        let rate = self.doppler_rate();
+        {
+            let mut cmds = self.bridge.commands.lock().unwrap();
+            cmds.push(Command::SetSpeed(rate));
+            cmds.push(Command::SetTarget(weights));
         }
         self.bridge.pending_commands.store(true, Ordering::SeqCst);
     }
