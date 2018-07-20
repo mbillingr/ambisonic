@@ -11,8 +11,7 @@ use bformat::{Bformat, Bweights};
 /// Convert a `rodio::Source` to a spatial `Bstream` source with associated controller
 ///
 /// The input source must produce `f32` samples and is expected to have exactly one channel.
-pub fn bstream<I: Source<Item = f32> + Send + 'static>(
-    source: I) -> (Bstream, SoundController) {
+pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, SoundController) {
     assert_eq!(source.channels(), 1);
 
     let bridge = Arc::new(BstreamBridge {
@@ -98,9 +97,7 @@ impl Iterator for Bstream {
                 }
             }
 
-            self.bridge
-                .pending_commands
-                .store(false, Ordering::SeqCst);
+            self.bridge.pending_commands.store(false, Ordering::SeqCst);
         }
 
         while self.sampling_offset >= 1.0 {
