@@ -10,7 +10,7 @@ use std::time::Duration;
 use rodio::{Sample, Source};
 
 use bformat::Bformat;
-use bstream::{self, Bstream, BstreamController};
+use bstream::{self, Bstream, SoundController};
 
 /// Construct a 3D sound mixer and associated sound composer.
 pub fn bmixer(sample_rate: u32) -> (BstreamMixer, Arc<BmixerComposer>) {
@@ -102,11 +102,11 @@ impl BmixerComposer {
     /// Add a single-channel `Source` to the sound scene at a position relative to the listener
     ///
     /// Returns a controller object that can be used to control the source during playback.
-    pub fn play<I>(&self, input: I, pos: [f32; 3]) -> Arc<BstreamController>
+    pub fn play<I>(&self, input: I) -> SoundController
     where
         I: Source<Item = f32> + Send + 'static,
     {
-        let (bstream, sound_ctl) = bstream::bstream(input, pos);
+        let (bstream, sound_ctl) = bstream::bstream(input);
 
         self.pending_streams
             .lock()

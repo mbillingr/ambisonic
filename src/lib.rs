@@ -1,4 +1,4 @@
-//! Compose and play 3D audio.
+//! ## Compose and play 3D audio.
 //!
 //! The library provides 3D sound scene support on top of [`rodio`](https://crates.io/crates/rodio).
 //! It allows positioning and moving sound sources freely in 3D space around a virtual listener,
@@ -14,6 +14,30 @@
 //! and played through a `rodio` sink. Although at the moment only stereo output is supported, the
 //! *B-format* abstraction should make it easy to implement arbitrary speaker configurations in the
 //! future.
+//!
+//! ## Usage Example
+//!
+//! ```
+//! use std::thread::sleep;
+//! use std::time::Duration;
+//! use ambisonic::{rodio, AmbisonicBuilder};
+//!
+//! let scene = AmbisonicBuilder::default().build();
+//!
+//! let source = rodio::source::SineWave::new(440);
+//! let mut sound = scene.play(source);
+//!
+//! // exaggerate doppler effect
+//! sound.set_doppler_factor(10.0);
+//!
+//! // move sound from right to left
+//! sound.set_velocity([-1.0, 0.0, 0.0]);
+//! for i in 0..1000 {
+//!     sound.set_position([50.0 - i as f32 / 10.0, 1.0, 0.0]);
+//!     sleep(Duration::from_millis(10));
+//! }
+//! sound.set_velocity([0.0, 0.0, 0.0]);
+//! ```
 
 extern crate cpal;
 pub extern crate rodio;
@@ -26,7 +50,7 @@ mod renderer;
 use std::sync::Arc;
 
 use bmixer::BmixerComposer;
-use bstream::BstreamController;
+pub use bstream::SoundController;
 
 /// A builder object for creating `Ambisonic` contexts
 pub struct AmbisonicBuilder {
@@ -98,11 +122,11 @@ impl Ambisonic {
     ///
     /// Returns a controller object that can be used to control the source during playback.
     #[inline(always)]
-    pub fn play<I>(&self, input: I, pos: [f32; 3]) -> Arc<BstreamController>
+    pub fn play<I>(&self, input: I) -> SoundController
     where
         I: rodio::Source<Item = f32> + Send + 'static,
     {
-        self.composer.play(input, pos)
+        self.composer.play(input)
     }
 }
 
@@ -117,22 +141,42 @@ mod tests {
         let engine = AmbisonicBuilder::new().build();
 
         let source = rodio::source::SineWave::new(440);
-        let first = engine.play(source, [1.0, 0.0, 0.0]);
+        let mut first = engine.play(source);
 
+        first.set_position([1.0, 0.0, 0.0]);
         sleep(Duration::from_millis(1000));
 
         let source = rodio::source::SineWave::new(330);
-        let second = engine.play(source, [-1.0, 0.0, 0.0]);
+        let mut second = engine.play(source);
 
+        second.set_position([-1.0, 0.0, 0.0]);
         sleep(Duration::from_millis(1000));
 
         first.stop();
         second.set_position([0.0, 1.0, 0.0]);
-
         sleep(Duration::from_millis(1000));
 
         drop(engine);
 
         sleep(Duration::from_millis(1000));
+    }
+
+    #[test]
+    fn move_sound() {
+        let scene = AmbisonicBuilder::default().build();
+
+        let source = rodio::source::SineWave::new(440);
+        let mut sound = scene.play(source);
+
+        // exaggerate doppler effect
+        sound.set_doppler_factor(10.0);
+
+        // move sound from right to left
+        sound.set_velocity([-1.0, 0.0, 0.0]);
+        for i in 0..1000 {
+            sound.set_position([50.0 - i as f32 / 10.0, 1.0, 0.0]);
+            sleep(Duration::from_millis(10));
+        }
+        sound.set_velocity([0.0, 0.0, 0.0]);
     }
 }

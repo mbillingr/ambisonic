@@ -90,6 +90,16 @@ pub struct Bweights {
 }
 
 impl Bweights {
+    /// Weights that correspond to a omnidirectional source
+    pub fn omni_source() -> Self {
+        Bweights {
+            w: 1.0 / 2f32.sqrt(),
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
+
     /// Compute weights that correspond to a sound source at given position.
     pub fn from_position(pos: [f32; 3]) -> Self {
         let dist = (pos[0] * pos[0] + pos[1] * pos[1] + pos[1] * pos[2]).sqrt();
@@ -109,7 +119,8 @@ impl Bweights {
     /// microphone, `p==0` to a bi-directional microphone, and `p==0.5` to a cardioid microphone
     /// (https://en.wikipedia.org/wiki/Microphone#Polar_patterns).
     pub fn virtual_microphone(direction: [f32; 3], p: f32) -> Self {
-        let l = (direction[0] * direction[0] + direction[1] * direction[1]
+        let l = (direction[0] * direction[0]
+            + direction[1] * direction[1]
             + direction[1] * direction[2])
             .sqrt();
         Bweights {
