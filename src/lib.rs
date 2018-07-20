@@ -1,13 +1,19 @@
-//! Ambisonic is a library for playing 3D audio.
+//! Compose and play 3D audio.
 //!
-//! The library is built around the concept of a intermediate representation of the sound field,
-//! called the *B-format*. The *B-format* describes what the listener should hear, independent of
+//! The library provides 3D sound scene support on top of [`rodio`](https://crates.io/crates/rodio).
+//! It allows positioning and moving sound sources freely in 3D space around a virtual listener,
+//! and playing the resulting spatial mix in real-time over a sound card.
+//!
+//! `Ambisonic` is built around the concept of an intermediate representation of the sound field,
+//! called *B-format*. The *B-format* describes what the listener should hear, independent of
 //! their audio playback equipment. This leads to a clear separation of audio scene composition and
-//! rendering. For details, see https://en.wikipedia.org/wiki/Ambisonics.
+//! rendering. For details, see [Wikipedia](https://en.wikipedia.org/wiki/Ambisonics).
 //!
 //! In its current state, the library allows spatial composition of single-channel `rodio` sources
-//! into a first-order *B-format* stream, and rendering the *B-format* stream to a two-channel
-//! stereo signal. The result can be played through a `rodio` sink.
+//! into a first-order *B-format* stream. That stream is rendered to a two-channel stereo signal,
+//! and played through a `rodio` sink. Although at the moment only stereo output is supported, the
+//! *B-format* abstraction should make it easy to implement arbitrary speaker configurations in the
+//! future.
 
 extern crate cpal;
 pub extern crate rodio;
@@ -90,7 +96,7 @@ pub struct Ambisonic {
 impl Ambisonic {
     /// Add a single-channel `Source` to the sound scene at a position relative to the listener
     ///
-    /// Returns a controller object that can be used to change the source position during playback.
+    /// Returns a controller object that can be used to control the source during playback.
     #[inline(always)]
     pub fn play<I>(&self, input: I, pos: [f32; 3]) -> Arc<BstreamController>
     where

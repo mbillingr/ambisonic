@@ -101,7 +101,7 @@ pub struct BmixerComposer {
 impl BmixerComposer {
     /// Add a single-channel `Source` to the sound scene at a position relative to the listener
     ///
-    /// Returns a controller object that can be used to change the source position during playback.
+    /// Returns a controller object that can be used to control the source during playback.
     pub fn play<I>(&self, input: I, pos: [f32; 3]) -> Arc<BstreamController>
     where
         I: Source<Item = f32> + Send + 'static,
