@@ -1,3 +1,13 @@
+<a name="0.1.1"></a>
+## 0.1.1 (2018-07-20)
+
+
+#### Bug Fixes
+
+*   readme and repo link ([ca18ce46](https://github.com/mbillingr/ambisonic/commit/ca18ce46297385c863c7efd7486ef8284e88d41d))
+
+
+
 <a name="0.1.0"></a>
 ## 0.1.0 (2018-07-20)
 
