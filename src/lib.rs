@@ -27,11 +27,8 @@
 //! let source = rodio::source::SineWave::new(440);
 //! let mut sound = scene.play(source);
 //!
-//! // exaggerate doppler effect
-//! sound.set_doppler_factor(10.0);
-//!
 //! // move sound from right to left
-//! sound.set_velocity([-1.0, 0.0, 0.0]);
+//! sound.set_velocity([-10.0, 0.0, 0.0]);
 //! for i in 0..1000 {
 //!     sound.set_position([50.0 - i as f32 / 10.0, 1.0, 0.0]);
 //!     sleep(Duration::from_millis(10));
@@ -168,11 +165,8 @@ mod tests {
         let source = rodio::source::SineWave::new(440);
         let mut sound = scene.play(source);
 
-        // exaggerate doppler effect
-        sound.set_doppler_factor(10.0);
-
         // move sound from right to left
-        sound.set_velocity([-1.0, 0.0, 0.0]);
+        sound.set_velocity([-10.0, 0.0, 0.0]);
         for i in 0..1000 {
             sound.set_position([50.0 - i as f32 / 10.0, 1.0, 0.0]);
             sleep(Duration::from_millis(10));
