@@ -102,7 +102,7 @@ impl Bweights {
 
     /// Compute weights that correspond to a sound source at given position.
     pub fn from_position(pos: [f32; 3]) -> Self {
-        let dist = (pos[0] * pos[0] + pos[1] * pos[1] + pos[1] * pos[2]).sqrt();
+        let dist = (pos[0] * pos[0] + pos[1] * pos[1] + pos[2] * pos[2]).sqrt();
         let falloff = 1.0 / dist.max(1.0); // todo: proper falloff and distance model(s)
         Bweights {
             w: falloff / 2f32.sqrt(),

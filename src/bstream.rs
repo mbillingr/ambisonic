@@ -209,12 +209,12 @@ impl SoundController {
     fn doppler_rate(&self) -> f32 {
         let dist = (self.position[0] * self.position[0]
             + self.position[1] * self.position[1]
-            + self.position[1] * self.position[2])
+            + self.position[2] * self.position[2])
             .sqrt();
 
         let relative_velocity = (self.position[0] * self.velocity[0]
             + self.position[1] * self.velocity[1]
-            + self.position[1] * self.velocity[2]) / dist;
+            + self.position[2] * self.velocity[2]) / dist;
 
         self.speed_of_sound / (self.speed_of_sound + self.doppler_factor * relative_velocity)
     }
