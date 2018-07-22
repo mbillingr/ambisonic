@@ -45,7 +45,10 @@ mod bmixer;
 mod bstream;
 mod renderer;
 
+use std::f32;
 use std::sync::Arc;
+
+use rodio::source::UniformSourceIterator;
 
 use bmixer::BmixerComposer;
 pub use bstream::SoundController;
@@ -190,5 +193,53 @@ mod tests {
         }
 
         sleep(Duration::from_secs(10));
+    }
+
+    #[test]
+    fn hrir() {
+        use rodio::Source;
+
+        let device = rodio::default_output_device().unwrap();
+
+        let sink = rodio::Sink::new(&device);
+
+        let (mixer, controller) = bmixer::bmixer(48000);
+        let output = renderer::BstreamHrtfRenderer::new(mixer, "tools/test.hrir");
+        //let output = renderer::BstreamStereoRenderer::new(mixer);
+
+        let output: UniformSourceIterator<_, f32>  = UniformSourceIterator::new(output, 2, 44100);
+
+        sink.append(output);
+
+        let scene = Ambisonic {
+            sink,
+            composer: controller,
+        };
+
+        let source = rodio::source::SineWave::new(110).amplify(0.5)
+            .mix(rodio::source::SineWave::new(220).amplify(1.0))
+            .mix(rodio::source::SineWave::new(440).amplify(0.6))
+            .mix(rodio::source::SineWave::new(880).amplify(0.2))
+            .mix(rodio::source::SineWave::new(880 * 2).amplify(0.05))
+            .amplify(0.5);
+        let mut sound = scene.play(source);
+
+        for i in 0..1000 {
+            let angle = f32::consts::PI * 2.0 * i as f32 / 1000.0;
+            sound.adjust_position([angle.sin(), angle.cos(), 0.0]);
+            sleep(Duration::from_millis(10));
+        }
+
+        for i in 0..1000 {
+            let angle = f32::consts::PI * 2.0 * i as f32 / 1000.0;
+            sound.adjust_position([0.0, angle.cos(), angle.sin()]);
+            sleep(Duration::from_millis(10));
+        }
+
+        for i in 0..1000 {
+            let angle = f32::consts::PI * 2.0 * i as f32 / 1000.0;
+            sound.adjust_position([angle.cos(), 0.0, angle.sin()]);
+            sleep(Duration::from_millis(10));
+        }
     }
 }

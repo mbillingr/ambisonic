@@ -7,7 +7,7 @@ use rodio::Sample;
 ///
 /// It encodes four components of the sound field at the lister position: omnidirectional level `w`
 /// and the level gradient in `x`, `y`, and `z` directions.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Bformat {
     w: f32,
     x: f32,
@@ -81,7 +81,7 @@ unsafe impl CpalSample for Bformat {
 }
 
 /// Weights for manipulating `Bformat` samples.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Bweights {
     w: f32,
     x: f32,
@@ -90,6 +90,11 @@ pub struct Bweights {
 }
 
 impl Bweights {
+    /// Initialze new weights with given values
+    pub fn new(w: f32, x: f32, y: f32, z: f32) -> Self {
+        Bweights { w, x, y, z }
+    }
+
     /// Weights that correspond to a omnidirectional source
     pub fn omni_source() -> Self {
         Bweights {
