@@ -1,6 +1,6 @@
 [package]
 name = "ambisonic"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Martin Billinger <flkazemakase@gmail.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/mbillingr/ambisonic"

@@ -1,3 +1,18 @@
+<a name="0.1.2"></a>
+## 0.1.2 (2018-07-22)
+
+
+#### Bug Fixes
+
+*   #1 z-coordinate bug ([efff4d15](https://github.com/mbillingr/ambisonic/commit/efff4d15d1271c0c9e347cdc93fdbfeaf7ac199d))
+*   correct example velocity and doppler factor ([8457a2f3](https://github.com/mbillingr/ambisonic/commit/8457a2f320a7ed560493ca02f9809666a64fbe13))
+
+#### Features
+
+*   smooth source movement ([d3efa648](https://github.com/mbillingr/ambisonic/commit/d3efa648c35532072338dbea868e305d19533855))
+
+
+
 <a name="0.1.1"></a>
 ## 0.1.1 (2018-07-20)
 
