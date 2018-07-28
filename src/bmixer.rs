@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use rodio::{Sample, Source};
+use rodio::{source::UniformSourceIterator, Sample, Source};
 
 use bformat::Bformat;
 use bstream::{self, Bstream, SoundController};
@@ -106,7 +106,12 @@ impl BmixerComposer {
     where
         I: Source<Item = f32> + Send + 'static,
     {
-        let (bstream, sound_ctl) = bstream::bstream(input);
+        let (bstream, sound_ctl) = if input.sample_rate() == self.sample_rate {
+            bstream::bstream(input)
+        } else {
+            let input = UniformSourceIterator::new(input, 1, self.sample_rate);
+            bstream::bstream(input)
+        };
 
         self.pending_streams
             .lock()
