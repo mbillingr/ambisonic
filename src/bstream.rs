@@ -131,6 +131,7 @@ impl Iterator for Bstream {
     }
 }
 
+#[derive(Debug)]
 enum Command {
     SetWeights(Bweights),
     SetTarget(Bweights),
