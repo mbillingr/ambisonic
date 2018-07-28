@@ -10,10 +10,16 @@
 //! rendering. For details, see [Wikipedia](https://en.wikipedia.org/wiki/Ambisonics).
 //!
 //! In its current state, the library allows spatial composition of single-channel `rodio` sources
-//! into a first-order *B-format* stream. That stream is rendered to a two-channel stereo signal,
-//! and played through a `rodio` sink. Although at the moment only stereo output is supported, the
-//! *B-format* abstraction should make it easy to implement arbitrary speaker configurations in the
-//! future.
+//! into a first-order *B-format* stream. The chosen renderer then decodes the *B-format* stream
+//! into audio signals for playback.
+//!
+//! Currently, the following renderers are available:
+//!
+//! - Stereo: simple and efficient playback on two stereo speakers or headphones
+//! - HRTF: realistic 3D sound over headphones using head related transfer functions
+//!
+//! Although at the moment only stereo output is supported, the *B-format* abstraction should make
+//! it easy to implement arbitrary speaker configurations in the future.
 //!
 //! ## Usage Example
 //!
@@ -38,25 +44,54 @@
 //! ```
 
 extern crate cpal;
+extern crate rand;
 pub extern crate rodio;
 
 mod bformat;
 mod bmixer;
 mod bstream;
 mod renderer;
+pub mod sources;
 
 use std::f32;
 use std::sync::Arc;
 
-use rodio::source::UniformSourceIterator;
-
 use bmixer::BmixerComposer;
 pub use bstream::SoundController;
+pub use renderer::{HrtfConfig, StereoConfig};
+
+/// Configure playback parameters
+pub enum PlaybackConfiguration {
+    /// Stereo playback
+    Stereo(StereoConfig),
+
+    /// Headphone playback using head related transfer functions
+    Hrtf(HrtfConfig),
+}
+
+impl Default for PlaybackConfiguration {
+    fn default() -> Self {
+        PlaybackConfiguration::Stereo(StereoConfig::default())
+    }
+}
+
+impl From<StereoConfig> for PlaybackConfiguration {
+    fn from(cfg: StereoConfig) -> Self {
+        PlaybackConfiguration::Stereo(cfg)
+    }
+}
+
+impl From<HrtfConfig> for PlaybackConfiguration {
+    fn from(cfg: HrtfConfig) -> Self {
+        PlaybackConfiguration::Hrtf(cfg)
+    }
+}
 
 /// A builder object for creating `Ambisonic` contexts
 pub struct AmbisonicBuilder {
     device: Option<rodio::Device>,
     sample_rate: u32,
+    config: PlaybackConfiguration,
 }
 
 impl AmbisonicBuilder {
@@ -72,9 +107,18 @@ impl AmbisonicBuilder {
         let sink = rodio::Sink::new(&device);
 
         let (mixer, controller) = bmixer::bmixer(self.sample_rate);
-        let output = renderer::BstreamStereoRenderer::new(mixer);
 
-        sink.append(output);
+        match self.config {
+            PlaybackConfiguration::Stereo(cfg) => {
+                let output = renderer::BstreamStereoRenderer::new(mixer, cfg);
+                sink.append(output);
+            }
+
+            PlaybackConfiguration::Hrtf(cfg) => {
+                let output = renderer::BstreamHrtfRenderer::new(mixer, cfg);
+                sink.append(output);
+            }
+        }
 
         Ambisonic {
             sink,
@@ -97,13 +141,19 @@ impl AmbisonicBuilder {
             ..self
         }
     }
+
+    /// Set playback configuration
+    pub fn with_config(self, config: PlaybackConfiguration) -> Self {
+        AmbisonicBuilder { config, ..self }
+    }
 }
 
 impl Default for AmbisonicBuilder {
     fn default() -> Self {
         AmbisonicBuilder {
             device: None,
-            sample_rate: 44100,
+            sample_rate: 48000,
+            config: PlaybackConfiguration::default(),
         }
     }
 }
@@ -186,10 +236,10 @@ mod tests {
         let scene = AmbisonicBuilder::default().build();
 
         let mut f: u64 = 1;
-        for i in 0..850 {
-            f = (f + f*f * 7 + f*f*f * 3 + 1) % 800;
+        for _ in 0..850 {
+            f = (f + f * f * 7 + f * f * f * 3 + 1) % 800;
             let source = rodio::source::SineWave::new(440).amplify(0.001);
-            let sound = scene.play(source);
+            let _ = scene.play(source);
         }
 
         sleep(Duration::from_secs(10));
@@ -197,48 +247,15 @@ mod tests {
 
     #[test]
     fn hrir() {
-        use rodio::Source;
+        let cfg = HrtfConfig::default();
+        let scene = AmbisonicBuilder::default().with_config(cfg.into()).build();
 
-        let device = rodio::default_output_device().unwrap();
+        let source = sources::Noise::new(48000);
 
-        let sink = rodio::Sink::new(&device);
-
-        let (mixer, controller) = bmixer::bmixer(48000);
-        let output = renderer::BstreamHrtfRenderer::new(mixer, "tools/test.hrir");
-        //let output = renderer::BstreamStereoRenderer::new(mixer);
-
-        let output: UniformSourceIterator<_, f32>  = UniformSourceIterator::new(output, 2, 44100);
-
-        sink.append(output);
-
-        let scene = Ambisonic {
-            sink,
-            composer: controller,
-        };
-
-        let source = rodio::source::SineWave::new(110).amplify(0.5)
-            .mix(rodio::source::SineWave::new(220).amplify(1.0))
-            .mix(rodio::source::SineWave::new(440).amplify(0.6))
-            .mix(rodio::source::SineWave::new(880).amplify(0.2))
-            .mix(rodio::source::SineWave::new(880 * 2).amplify(0.05))
-            .amplify(0.5);
         let mut sound = scene.play(source);
 
         for i in 0..1000 {
-            let angle = f32::consts::PI * 2.0 * i as f32 / 1000.0;
-            sound.adjust_position([angle.sin(), angle.cos(), 0.0]);
-            sleep(Duration::from_millis(10));
-        }
-
-        for i in 0..1000 {
-            let angle = f32::consts::PI * 2.0 * i as f32 / 1000.0;
-            sound.adjust_position([0.0, angle.cos(), angle.sin()]);
-            sleep(Duration::from_millis(10));
-        }
-
-        for i in 0..1000 {
-            let angle = f32::consts::PI * 2.0 * i as f32 / 1000.0;
-            sound.adjust_position([angle.cos(), 0.0, angle.sin()]);
+            sound.adjust_position([(500 - i) as f32 / 10.0, 1.0, 0.0]);
             sleep(Duration::from_millis(10));
         }
     }
