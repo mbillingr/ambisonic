@@ -80,14 +80,12 @@ where
     }
 }
 
-
 /// Render a *B-format* stream for headphones using head related transfer functions.
 pub struct BstreamHrtfRenderer<I> {
     input: I,
     buffered_output: Option<f32>,
-    input_buffer: VecDeque<Bformat>,
-    left_coefs: Vec<Bweights>,
-    right_coefs: Vec<Bweights>,
+    convolution_buffers: Vec<VecDeque<f32>>,
+    virtual_speakers: Vec<VirtualSpeaker>,
 }
 
 impl<I> BstreamHrtfRenderer<I>
@@ -96,19 +94,22 @@ where
 {
     /// Construct a new HRTF renderer with default settings
     pub fn new(input: I, hrir_file: &str) -> Self {
-        let (fs, left_coefs, right_coefs) = load_hrir(hrir_file);
+        let (fs, virtual_speakers) = load_hrir(hrir_file);
         assert_eq!(fs as u32, input.sample_rate());
-        assert_eq!(left_coefs.len(), right_coefs.len());
 
-        let n = left_coefs.len();
-        let input_buffer = VecDeque::from(vec![Bformat::zero_value(); n]);
+        let convolution_buffers = virtual_speakers
+            .iter()
+            .map(|speaker| {
+                let n = speaker.left_hrir.len().max(speaker.right_hrir.len());
+                VecDeque::from(vec![0.0; n])
+            })
+            .collect();
 
         BstreamHrtfRenderer {
             input,
             buffered_output: None,
-            input_buffer,
-            left_coefs,
-            right_coefs,
+            convolution_buffers,
+            virtual_speakers,
         }
     }
 }
@@ -139,8 +140,8 @@ where
 }
 
 impl<I> Iterator for BstreamHrtfRenderer<I>
-    where
-        I: Source<Item = Bformat>,
+where
+    I: Source<Item = Bformat>,
 {
     type Item = f32;
 
@@ -150,18 +151,27 @@ impl<I> Iterator for BstreamHrtfRenderer<I>
             None => {
                 let sample = self.input.next()?;
 
-                self.input_buffer.pop_back();
-                self.input_buffer.push_front(sample);
+                let (mut left, mut right) = (0.0, 0.0);
 
-                let left: f32 = self.input_buffer.iter()
-                    .zip(self.left_coefs.iter())
-                    .map(|(sample, weight)| weight.dot(*sample))
-                    .sum();
+                for (speaker, buffer) in self.virtual_speakers
+                    .iter()
+                    .zip(self.convolution_buffers.iter_mut())
+                {
+                    let signal = speaker.bweights.dot(sample);
+                    buffer.push_front(signal);
 
-                let right: f32 = self.input_buffer.iter()
-                    .zip(self.right_coefs.iter())
-                    .map(|(sample, weight)| weight.dot(*sample))
-                    .sum();
+                    left += buffer
+                        .iter()
+                        .zip(&speaker.left_hrir)
+                        .map(|(s, h)| s * h)
+                        .sum::<f32>();
+
+                    right += buffer
+                        .iter()
+                        .zip(&speaker.right_hrir)
+                        .map(|(s, h)| s * h)
+                        .sum::<f32>();
+                }
 
                 // emit left channel now, and right channel next time
                 self.buffered_output = Some(right);
@@ -171,8 +181,13 @@ impl<I> Iterator for BstreamHrtfRenderer<I>
     }
 }
 
+struct VirtualSpeaker {
+    bweights: Bweights,
+    left_hrir: Vec<f32>,
+    right_hrir: Vec<f32>,
+}
 
-fn load_hrir(filename: &str) -> (f32, Vec<Bweights>, Vec<Bweights>) {
+fn load_hrir(filename: &str) -> (f32, Vec<VirtualSpeaker>) {
     // todo: proper error handling
     let file = File::open(filename).unwrap();
     let mut bufr = BufReader::new(file);
@@ -183,24 +198,34 @@ fn load_hrir(filename: &str) -> (f32, Vec<Bweights>, Vec<Bweights>) {
     let fs: f32 = lines.next().unwrap().parse().unwrap();
     assert_eq!(lines.next(), Some(""));
 
-    let mut lr = [Vec::new(), Vec::new()];
+    let mut virtual_speakers = Vec::new();
 
-    for side in &mut lr {
-        loop {
-            let weights: Vec<_> = match lines.next() {
-                None => panic!("unexpected end of file"),
-                Some("") => break,
-                Some(l) => l.split(", ").map(|s| s.parse().unwrap()).collect()
-            };
+    loop {
+        let bweights: Bweights = match lines.next() {
+            None | Some("") => break,
+            Some(l) => l.split(", ").map(|s| s.parse().unwrap()).collect(),
+        };
 
-            assert_eq!(weights.len(), 4);
+        let left_hrir: Vec<f32> = match lines.next() {
+            None | Some("") => panic!("expected hrir"),
+            Some(l) => l.split(", ").map(|s| s.parse().unwrap()).collect(),
+        };
 
-            let (w, x, y, z) = (weights[0], weights[1], weights[2], weights[3]);
-            let bw = Bweights::new(w, x, y, z);
+        let right_hrir: Vec<f32> = match lines.next() {
+            None | Some("") => panic!("expected hrir"),
+            Some(l) => l.split(", ").map(|s| s.parse().unwrap()).collect(),
+        };
 
-            side.push(bw);
-        }
+        assert_eq!(lines.next(), Some(""));
+
+        virtual_speakers.push(VirtualSpeaker {
+            bweights,
+            left_hrir,
+            right_hrir,
+        });
     }
 
-    (fs, lr[0].clone(), lr[1].clone())
+    assert!(lines.next().is_none());
+
+    (fs, virtual_speakers)
 }

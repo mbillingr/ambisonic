@@ -1,5 +1,7 @@
 //! *B-format* representation of audio samples
 
+use std::iter::FromIterator;
+
 use cpal::{Sample as CpalSample, SampleFormat};
 use rodio::Sample;
 
@@ -160,7 +162,12 @@ impl Bweights {
     /// adjust weights towards target
     pub fn approach(&mut self, target: &Bweights, max_step: f32) {
         // if this turns out too slow we could try to replace it with simple steps along each dimension
-        let dir = [target.w - self.w, target.x - self.x, target.y - self.y, target.z - self.z];
+        let dir = [
+            target.w - self.w,
+            target.x - self.x,
+            target.y - self.y,
+            target.z - self.z,
+        ];
         let dist = (dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2] + dir[3] * dir[3]).sqrt();
         if dist <= max_step {
             *self = *target;
@@ -171,5 +178,19 @@ impl Bweights {
             self.y += dir[2] * d;
             self.z += dir[3] * d;
         }
+    }
+}
+
+impl FromIterator<f32> for Bweights {
+    fn from_iter<T: IntoIterator<Item = f32>>(iter: T) -> Self {
+        let mut iter = iter.into_iter();
+        let bw = Bweights {
+            w: iter.next().unwrap(),
+            x: iter.next().unwrap(),
+            y: iter.next().unwrap(),
+            z: iter.next().unwrap(),
+        };
+        assert!(iter.next().is_none());
+        bw
     }
 }

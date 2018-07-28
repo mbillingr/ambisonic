@@ -10,11 +10,19 @@ import numpy as np
 from netCDF4 import Dataset
 
 
-virtual_speakers = np.array([[45, -30], [45, 30],
-                             [135, -30], [135, 30],
-                             [225, -30], [225, 30],
-                             [315, -30], [315, 30]])
-vs_rad = virtual_speakers * np.pi / 180
+tetrahedron = np.array([[-np.sqrt(2/3), np.sqrt(2/9), -1/3],
+                        [np.sqrt(2/3), np.sqrt(2/9), -1/3],
+                        [0, -np.sqrt(8/9), -1/3],
+                        [0, 0, 1]])
+
+def calc_angles(cartesian):
+    phi = np.arcsin(cartesian[:, 2])
+    print(phi * 180 / np.pi)
+    theta = -np.arctan2(cartesian[:, 0] , cartesian[:, 1])
+    theta[theta < 0] = 2*np.pi + theta[theta < 0]
+    print(theta * 180 / np.pi)
+    
+calc_angles(tetrahedron)
 
 
 if __name__ == '__main__':
@@ -31,32 +39,55 @@ if __name__ == '__main__':
     pos = np.asarray(rootgrp.variables['SourcePosition'])
     ir = np.asarray(rootgrp.variables['Data.IR'])
     fs = rootgrp.variables['Data.SamplingRate'][0]
+    
+    C = np.concatenate([np.ones((4, 1)) / np.sqrt(2), tetrahedron], axis=1)
+    
+    ## each hrir direction is a virtual speaker
+    #C = []
+    #for theta, phi in pos[:, :2] * np.pi / 180:
+    #    C.append([1 / np.sqrt(2), 
+    #              np.sin(theta) * np.cos(phi), 
+    #              np.cos(theta) * np.cos(phi), 
+    #              np.sin(phi)])
+    
+    #CI = np.transpose(C)
+    #CI = np.linalg.pinv(C)
         
     # 6, 396, 1166
-    C = np.array([[1 / np.sqrt(2),
-                   np.cos(theta) * np.cos(phi),
-                   np.sin(theta) * np.cos(phi),
-                   np.sin(phi)] for theta, phi in vs_rad])
-    
+    #C = np.array([[1 / np.sqrt(2),
+    #               np.cos(theta) * np.cos(phi),
+    #               np.sin(theta) * np.cos(phi),
+    #               np.sin(phi)] for theta, phi in vs_rad])
+#    
     CI = np.linalg.pinv(C)
     
+    CI = C.T
+    
     # find hrirs that closest match the speaker directions
-    idx = [np.argmin(np.sum((pos[:, :2] - vs)**2, axis=1)) for vs in virtual_speakers]
     
-    hrirs = ir[idx]
+    #idx = [np.argmin(np.sum((pos[:, :2] - vs)**2, axis=1)) for vs in virtual_speakers]    
+    #hrirs = ir[idx]
     
-    w_hrir = (CI[0] * hrirs.T).sum(-1).T
-    x_hrir = (CI[1] * hrirs.T).sum(-1).T
-    y_hrir = (CI[2] * hrirs.T).sum(-1).T
-    z_hrir = (CI[3] * hrirs.T).sum(-1).T
+    hrirs = []
+    hrirs.append(ir[289])   # 60 / -20
+    hrirs.append(ir[1276])  # 300 / -20
+    hrirs.append(ir[777])   # 180 / -20
+    hrirs.append((ir[21] + ir[796]) / 2)  # 0 / 90; interpolate from 0/80 and 180/80
     
-    coefs = np.stack([w_hrir, x_hrir, y_hrir, z_hrir]).transpose(1, 0, 2)
+    #w_hrir = (CI[0] * ir.T).sum(-1).T
+    #x_hrir = (CI[1] * ir.T).sum(-1).T
+    #y_hrir = (CI[2] * ir.T).sum(-1).T
+    #z_hrir = (CI[3] * ir.T).sum(-1).T
+    
+    #coefs = np.stack([w_hrir, x_hrir, y_hrir, z_hrir]).transpose(1, 0, 2)
     
     with open(outfile, 'w') as f:
         print(fs, file=f)
         print(file=f)
-        for side in [0, 1]:
-            for idx in range(coefs.shape[2]):
-                print(', '.join(str(c) for c in coefs[side, :, idx]), file=f)
+        
+        for i in range(CI.shape[1]):
+            print(', '.join(str(ci) for ci in CI[:, i]), file=f)
+            print(', '.join(str(ci) for ci in hrirs[i][0]), file=f)
+            print(', '.join(str(ci) for ci in hrirs[i][1]), file=f)
             print(file=f)
                     
