@@ -12,10 +12,16 @@ their audio playback equipment. This leads to a clear separation of audio scene 
 rendering. For details, see [Wikipedia](https://en.wikipedia.org/wiki/Ambisonics).
 
 In its current state, the library allows spatial composition of single-channel `rodio` sources
-into a first-order *B-format* stream. That stream is rendered to a two-channel stereo signal,
-and played through a `rodio` sink. Although at the moment only stereo output is supported, the
-*B-format* abstraction should make it easy to implement arbitrary speaker configurations in the
-future.
+into a first-order *B-format* stream. The chosen renderer then decodes the *B-format* stream
+into audio signals for playback.
+
+Currently, the following renderers are available:
+
+- Stereo: simple and efficient playback on two stereo speakers or headphones
+- HRTF: realistic 3D sound over headphones using head related transfer functions
+
+Although at the moment only stereo output is supported, the *B-format* abstraction should make
+it easy to implement arbitrary speaker configurations in the future.
 
 ## Usage Example
 
