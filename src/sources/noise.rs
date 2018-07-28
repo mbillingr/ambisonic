@@ -4,6 +4,7 @@ use rand::{
 use rodio::Source;
 use std::time::Duration;
 
+/// Infinite white noise
 pub struct Noise {
     sample_rate: u32,
 }
