@@ -1,6 +1,6 @@
 [package]
 name = "ambisonic"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["Martin Billinger <flkazemakase@gmail.com>"]
 license = "MIT/Apache-2.0"
 repository = "https://github.com/mbillingr/ambisonic"
@@ -14,3 +14,4 @@ keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]
 cpal = "0.8"
 rodio = "0.8"
 rand = "0.5"
+
