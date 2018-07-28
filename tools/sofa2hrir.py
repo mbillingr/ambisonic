@@ -41,26 +41,8 @@ if __name__ == '__main__':
     fs = rootgrp.variables['Data.SamplingRate'][0]
     
     C = np.concatenate([np.ones((4, 1)) / np.sqrt(2), tetrahedron], axis=1)
-    
-    ## each hrir direction is a virtual speaker
-    #C = []
-    #for theta, phi in pos[:, :2] * np.pi / 180:
-    #    C.append([1 / np.sqrt(2), 
-    #              np.sin(theta) * np.cos(phi), 
-    #              np.cos(theta) * np.cos(phi), 
-    #              np.sin(phi)])
-    
-    #CI = np.transpose(C)
-    #CI = np.linalg.pinv(C)
-        
-    # 6, 396, 1166
-    #C = np.array([[1 / np.sqrt(2),
-    #               np.cos(theta) * np.cos(phi),
-    #               np.sin(theta) * np.cos(phi),
-    #               np.sin(phi)] for theta, phi in vs_rad])
 #    
-    CI = np.linalg.pinv(C)
-    
+    #CI = np.linalg.pinv(C)    
     CI = C.T
     
     # find hrirs that closest match the speaker directions
@@ -68,18 +50,13 @@ if __name__ == '__main__':
     #idx = [np.argmin(np.sum((pos[:, :2] - vs)**2, axis=1)) for vs in virtual_speakers]    
     #hrirs = ir[idx]
     
+    ir *= 10  # adjust loundness ... this value is very ad-hoc, but seems to work for now
+    
     hrirs = []
     hrirs.append(ir[289])   # 60 / -20
     hrirs.append(ir[1276])  # 300 / -20
     hrirs.append(ir[777])   # 180 / -20
     hrirs.append((ir[21] + ir[796]) / 2)  # 0 / 90; interpolate from 0/80 and 180/80
-    
-    #w_hrir = (CI[0] * ir.T).sum(-1).T
-    #x_hrir = (CI[1] * ir.T).sum(-1).T
-    #y_hrir = (CI[2] * ir.T).sum(-1).T
-    #z_hrir = (CI[3] * ir.T).sum(-1).T
-    
-    #coefs = np.stack([w_hrir, x_hrir, y_hrir, z_hrir]).transpose(1, 0, 2)
     
     with open(outfile, 'w') as f:
         print(fs, file=f)
