@@ -1,3 +1,5 @@
+### HRTFs
+
 - [Wikipedia/HRTFs](https://en.wikipedia.org/wiki/Head-related_transfer_function)
 
 - [Paper about conversion from Ambisonics to binaural using HRTFs](https://derby.openrepository.com/derby/handle/10545/621858)
@@ -13,3 +15,9 @@
 - [Austrian Academy of Sciences HRTF database](https://www.kfs.oeaw.ac.at/index.php?option=com_content&view=article&id=608:ari-hrtf-database&catid=158:resources-items&Itemid=606&lang=en)
 
 - [SOFA repository - "collect the worldwide available HRTFs, BRIRs, DRIRs, and other SOFA-related data at a single place"](http://www.sofaconventions.org/mediawiki/index.php/Files)
+
+### Reverb
+
+- [Useful guide on building reverbs](http://www.spinsemi.com/knowledge_base/effects.html#Reverberation)
+
+- [Schroeder Reverberator](https://ccrma.stanford.edu/~jos/pasp/Schroeder_Reverberator_called_JCRev.html)
