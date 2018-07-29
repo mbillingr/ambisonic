@@ -1,3 +1,13 @@
+<a name="0.2.1"></a>
+## 0.2.1 (2018-07-29)
+
+
+#### Bug Fixes
+
+*   badass memory leak in HRTF renderer ([c911536d](https://github.com/mbillingr/ambisonic/commit/c911536da50f150ef2d773388cc632faa809c195))
+
+
+
 <a name="0.2.0"></a>
 ## 0.2.0 (2018-07-28)
 
