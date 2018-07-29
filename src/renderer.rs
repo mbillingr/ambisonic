@@ -249,6 +249,7 @@ where
                     .zip(self.convolution_buffers.iter_mut())
                 {
                     let signal = speaker.bweights.dot(sample);
+                    buffer.pop_back();
                     buffer.push_front(signal);
 
                     left += buffer
