@@ -50,7 +50,9 @@ pub extern crate rodio;
 mod bformat;
 mod bmixer;
 mod bstream;
+mod filter;
 mod renderer;
+mod reverb;
 pub mod sources;
 
 use std::f32;
@@ -236,7 +238,7 @@ mod tests {
         let scene = AmbisonicBuilder::default().build();
 
         let mut f: u64 = 1;
-        for _ in 0..850 {
+        for _ in 0..500 {
             f = (f + f * f * 7 + f * f * f * 3 + 1) % 800;
             let source = rodio::source::SineWave::new(440).amplify(0.001);
             let _ = scene.play(source);

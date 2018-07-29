@@ -1,13 +1,13 @@
 //! Render *B-format* audio streams to streams suitable for playback on audio equipment.
 
-use std::collections::VecDeque;
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::time::Duration;
 
-use rodio::Source;
+use rodio::{Sample, Source};
 
 use bformat::{Bformat, Bweights};
+use filter::FirFilter;
 
 /// Stereo Playback configuration
 ///
@@ -157,8 +157,8 @@ impl HrtfConfig {
 
             virtual_speakers.push(VirtualSpeaker {
                 bweights,
-                left_hrir,
-                right_hrir,
+                left_hrir: FirFilter::new(left_hrir),
+                right_hrir: FirFilter::new(right_hrir),
             });
         }
 
@@ -172,10 +172,13 @@ impl HrtfConfig {
 }
 
 /// Render a *B-format* stream for headphones using head related transfer functions.
-pub struct BstreamHrtfRenderer<I> {
+pub struct BstreamHrtfRenderer<I>
+where
+    I: Source,
+    I::Item: Sample,
+{
     input: I,
     buffered_output: Option<f32>,
-    convolution_buffers: Vec<VecDeque<f32>>,
     virtual_speakers: Vec<VirtualSpeaker>,
 }
 
@@ -187,19 +190,9 @@ where
     pub fn new(input: I, config: HrtfConfig) -> Self {
         assert_eq!(config.sample_rate, input.sample_rate());
 
-        let convolution_buffers = config
-            .virtual_speakers
-            .iter()
-            .map(|speaker| {
-                let n = speaker.left_hrir.len().max(speaker.right_hrir.len());
-                VecDeque::from(vec![0.0; n])
-            })
-            .collect();
-
         BstreamHrtfRenderer {
             input,
             buffered_output: None,
-            convolution_buffers,
             virtual_speakers: config.virtual_speakers,
         }
     }
@@ -244,25 +237,11 @@ where
 
                 let (mut left, mut right) = (0.0, 0.0);
 
-                for (speaker, buffer) in self.virtual_speakers
-                    .iter()
-                    .zip(self.convolution_buffers.iter_mut())
+                for speaker in self.virtual_speakers.iter_mut()
                 {
                     let signal = speaker.bweights.dot(sample);
-                    buffer.pop_back();
-                    buffer.push_front(signal);
-
-                    left += buffer
-                        .iter()
-                        .zip(&speaker.left_hrir)
-                        .map(|(s, h)| s * h)
-                        .sum::<f32>();
-
-                    right += buffer
-                        .iter()
-                        .zip(&speaker.right_hrir)
-                        .map(|(s, h)| s * h)
-                        .sum::<f32>();
+                    left += speaker.left_hrir.push(signal);
+                    right += speaker.right_hrir.push(signal);
                 }
 
                 // emit left channel now, and right channel next time
@@ -275,8 +254,8 @@ where
 
 struct VirtualSpeaker {
     bweights: Bweights,
-    left_hrir: Vec<f32>,
-    right_hrir: Vec<f32>,
+    left_hrir: FirFilter<f32, f32>,
+    right_hrir: FirFilter<f32, f32>,
 }
 
 impl Default for HrtfConfig {
@@ -291,7 +270,7 @@ impl Default for HrtfConfig {
                         0.4714045207910317,
                         -0.3333333333333333,
                     ),
-                    left_hrir: vec![
+                    left_hrir: FirFilter::new(vec![
                         6.249694706639275e-05,
                         -0.00028243952328921296,
                         0.00039321097574429587,
@@ -548,8 +527,8 @@ impl Default for HrtfConfig {
                         -1.2127803756811772e-05,
                         -8.994766744763183e-06,
                         3.0542912554665236e-06,
-                    ],
-                    right_hrir: vec![
+                    ]),
+                    right_hrir: FirFilter::new(vec![
                         -7.430274617803434e-08,
                         1.1837041711260099e-05,
                         2.7806806883745594e-05,
@@ -806,7 +785,7 @@ impl Default for HrtfConfig {
                         9.029105967783835e-05,
                         3.3309468108200235e-05,
                         -1.0638805036933263e-06,
-                    ],
+                    ]),
                 },
                 VirtualSpeaker {
                     bweights: Bweights::new(
@@ -815,7 +794,7 @@ impl Default for HrtfConfig {
                         0.4714045207910317,
                         -0.3333333333333333,
                     ),
-                    left_hrir: vec![
+                    left_hrir: FirFilter::new(vec![
                         4.88212606342131e-06,
                         1.3327436363397283e-05,
                         7.997744546628383e-06,
@@ -1072,8 +1051,8 @@ impl Default for HrtfConfig {
                         -1.3353469512367155e-05,
                         -3.5050703672823147e-06,
                         4.2953377743515375e-07,
-                    ],
-                    right_hrir: vec![
+                    ]),
+                    right_hrir: FirFilter::new(vec![
                         6.0388802012312226e-05,
                         -0.00016104753740364686,
                         -1.2015073025395395e-06,
@@ -1330,7 +1309,7 @@ impl Default for HrtfConfig {
                         2.0839365788560826e-05,
                         -5.126954647494131e-06,
                         4.190779634427599e-06,
-                    ],
+                    ]),
                 },
                 VirtualSpeaker {
                     bweights: Bweights::new(
@@ -1339,7 +1318,7 @@ impl Default for HrtfConfig {
                         -0.9428090415820634,
                         -0.3333333333333333,
                     ),
-                    left_hrir: vec![
+                    left_hrir: FirFilter::new(vec![
                         9.52822404087783e-06,
                         -3.5951090922026196e-05,
                         0.00010234392902930267,
@@ -1596,8 +1575,8 @@ impl Default for HrtfConfig {
                         5.550915375351906e-05,
                         2.3210061499412404e-05,
                         7.3890271323762136e-06,
-                    ],
-                    right_hrir: vec![
+                    ]),
+                    right_hrir: FirFilter::new(vec![
                         1.847928274401056e-05,
                         -1.1761288760681055e-05,
                         -7.122177521523554e-05,
@@ -1854,11 +1833,11 @@ impl Default for HrtfConfig {
                         5.65753225600929e-05,
                         1.8022960830421653e-05,
                         5.200407144911878e-06,
-                    ],
+                    ]),
                 },
                 VirtualSpeaker {
                     bweights: Bweights::new(0.7071067811865475, 0.0, 0.0, 1.0),
-                    left_hrir: vec![
+                    left_hrir: FirFilter::new(vec![
                         2.3244703015734558e-05,
                         -1.0085714450269734e-05,
                         -7.84253188612638e-05,
@@ -2115,8 +2094,8 @@ impl Default for HrtfConfig {
                         7.623114925081609e-05,
                         2.6349053428020852e-05,
                         6.83444881133255e-06,
-                    ],
-                    right_hrir: vec![
+                    ]),
+                    right_hrir: FirFilter::new(vec![
                         2.2147208385003836e-05,
                         1.447572458346258e-05,
                         -0.00015835135855013505,
@@ -2373,7 +2352,7 @@ impl Default for HrtfConfig {
                         7.494639248761814e-05,
                         2.4374845679631107e-05,
                         5.238073015334521e-06,
-                    ],
+                    ]),
                 },
             ],
         }
