@@ -1,6 +1,7 @@
 //! *B-format* representation of audio samples
 
-use std::iter::FromIterator;
+use std::iter::{FromIterator, Sum};
+use std::ops;
 
 use cpal::{Sample as CpalSample, SampleFormat};
 use rodio::Sample;
@@ -11,7 +12,7 @@ use rodio::Sample;
 /// and the level gradient in `x`, `y`, and `z` directions.
 #[derive(Debug, Copy, Clone)]
 pub struct Bformat {
-    w: f32,
+    pub w: f32,
     x: f32,
     y: f32,
     z: f32,
@@ -192,5 +193,35 @@ impl FromIterator<f32> for Bweights {
         };
         assert!(iter.next().is_none());
         bw
+    }
+}
+
+impl ops::Mul<Bweights> for Bformat {
+
+    type Output = Bformat;
+
+    fn mul(self, rhs: Bweights) -> Bformat {
+        Bformat {
+            w: self.w * rhs.w,
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z,
+        }
+    }
+}
+
+impl ops::Add<Bformat> for Bformat {
+
+    type Output = Bformat;
+
+    fn add(self, rhs: Bformat) -> Bformat {
+        self.saturating_add(rhs)
+    }
+}
+
+impl Sum for Bformat {
+
+    fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
+        iter.fold(Bformat::zero_value(), Bformat::saturating_add)
     }
 }

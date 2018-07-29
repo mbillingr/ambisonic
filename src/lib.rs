@@ -61,6 +61,7 @@ use std::sync::Arc;
 use bmixer::BmixerComposer;
 pub use bstream::SoundController;
 pub use renderer::{HrtfConfig, StereoConfig};
+use reverb::Reverb;
 
 /// Configure playback parameters
 pub enum PlaybackConfiguration {
@@ -112,12 +113,14 @@ impl AmbisonicBuilder {
 
         match self.config {
             PlaybackConfiguration::Stereo(cfg) => {
-                let output = renderer::BstreamStereoRenderer::new(mixer, cfg);
+                let reverb = Reverb::new(mixer);
+                let output = renderer::BstreamStereoRenderer::new(reverb, cfg);
                 sink.append(output);
             }
 
             PlaybackConfiguration::Hrtf(cfg) => {
-                let output = renderer::BstreamHrtfRenderer::new(mixer, cfg);
+                let reverb = Reverb::new(mixer);
+                let output = renderer::BstreamHrtfRenderer::new(reverb, cfg);
                 sink.append(output);
             }
         }
@@ -258,7 +261,11 @@ mod tests {
 
         for i in 0..1000 {
             sound.adjust_position([(500 - i) as f32 / 10.0, 1.0, 0.0]);
-            sleep(Duration::from_millis(10));
+            sleep(Duration::from_millis(1));
         }
+
+        sound.stop();
+
+        sleep(Duration::from_millis(10000));
     }
 }

@@ -1,8 +1,97 @@
 use std::collections::VecDeque;
 use std::iter::Sum;
-use std::ops::Mul;
+use std::ops::{Add, Mul};
 
 use rodio::Sample;
+
+/// A simple delay
+#[derive(Clone)]
+pub struct Delay<X>
+{
+    buffer: VecDeque<X>,
+    last_output: X,
+}
+
+impl<X: Sample> Delay<X>
+{
+    /// Construct new filter from weights
+    pub fn new(n: usize) -> Self {
+        Delay {
+            buffer: vec![X::zero_value(); n].into(),
+            last_output: X::zero_value(),
+        }
+    }
+}
+
+impl<X: Copy> Delay<X>
+{
+    /// Push new sample into the filter and return filtered output
+    pub fn push(&mut self, x: X) -> X {
+        self.last_output = self.buffer.pop_back().unwrap();
+        self.buffer.push_front(x);
+        self.last_output
+    }
+
+    /// Retrieve final samples if there is no more input
+    pub fn push_empty(&mut self) -> Option<X> {
+        self.buffer.pop_back()
+    }
+
+    pub fn last(&self) -> X {
+        self.last_output
+    }
+}
+
+/// An all-pass filter with delay element
+#[derive(Clone)]
+pub struct AllPass<W, X>
+{
+    buffer: VecDeque<X>,
+    last_output: X,
+    forward_coefficient: W,
+    backward_coefficient: W,
+}
+
+impl<W, X: Sample> AllPass<W, X>
+{
+    /// Construct new filter from weights
+    pub fn new(n: usize, f: W, b: W) -> Self {
+        AllPass {
+            buffer: vec![X::zero_value(); n].into(),
+            last_output: X::zero_value(),
+            forward_coefficient: f,
+            backward_coefficient: b,
+        }
+    }
+}
+
+impl<W, X: Copy> AllPass<W, X>
+where
+    X: Copy + Mul<W, Output=X> + Add<X, Output=X>,
+    W: Copy
+{
+    /// Push new sample into the filter and return filtered output
+    pub fn push(&mut self, x: X) -> X {
+        let d =  self.buffer.pop_back().unwrap();
+        let c = x + d * self.backward_coefficient;
+        self.last_output  = c * self.forward_coefficient + d;
+        self.buffer.push_front(c);
+        self.last_output
+    }
+
+    /// Retrieve final samples if there is no more input
+    pub fn push_empty(&mut self) -> Option<X> {
+        let d =  self.buffer.pop_back().unwrap();
+        let c = d * self.backward_coefficient;
+        self.last_output  = c * self.forward_coefficient + d;
+        self.buffer.push_front(c);
+        Some(self.last_output)
+    }
+
+    pub fn last(&self) -> X {
+        self.last_output
+    }
+}
 
 /// Finite impulse response filter
 pub struct FirFilter<W, X>
@@ -12,16 +101,15 @@ pub struct FirFilter<W, X>
 }
 
 impl<W, X> FirFilter<W, X>
-where
-    X: Sample + Mul<W> + Copy,
-    X::Output: Sum,
-    W: Copy,
+    where
+        X: Sample + Mul<W> + Copy,
+        X::Output: Sum,
+        W: Copy,
 {
     /// Construct new filter from weights
     pub fn new(weights: Vec<W>) -> Self {
-        let convolution_buffer = vec![X::zero_value(); weights.len()].into();
         FirFilter {
-            convolution_buffer,
+            convolution_buffer: vec![X::zero_value(); weights.len()].into(),
             weights,
         }
     }
