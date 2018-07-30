@@ -253,7 +253,9 @@ mod tests {
     #[test]
     fn hrir() {
         let cfg = HrtfConfig::default();
-        let scene = AmbisonicBuilder::default().with_config(cfg.into()).build();
+        let scene = AmbisonicBuilder::default()
+            //.with_config(cfg.into())
+            .build();
 
         let source = sources::Noise::new(48000);
 
