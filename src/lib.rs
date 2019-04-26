@@ -43,9 +43,9 @@
 //! sound.set_velocity([0.0, 0.0, 0.0]);
 //! ```
 
-extern crate cpal;
-extern crate rand;
-pub extern crate rodio;
+
+
+pub use rodio;
 
 mod bformat;
 mod bmixer;
@@ -56,9 +56,9 @@ pub mod sources;
 use std::f32;
 use std::sync::Arc;
 
-use bmixer::BmixerComposer;
-pub use bstream::SoundController;
-pub use renderer::{HrtfConfig, StereoConfig};
+use crate::bmixer::BmixerComposer;
+pub use crate::bstream::SoundController;
+pub use crate::renderer::{HrtfConfig, StereoConfig};
 
 /// Configure playback parameters
 pub enum PlaybackConfiguration {

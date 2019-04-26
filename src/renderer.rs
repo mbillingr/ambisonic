@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use rodio::Source;
 
-use bformat::{Bformat, Bweights};
+use crate::bformat::{Bformat, Bweights};
 
 /// Stereo Playback configuration
 ///

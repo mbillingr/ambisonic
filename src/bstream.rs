@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use rodio::Source;
 
-use bformat::{Bformat, Bweights};
+use crate::bformat::{Bformat, Bweights};
 
 /// Convert a `rodio::Source` to a spatial `Bstream` source with associated controller
 ///
@@ -46,7 +46,7 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, S
 ///
 /// Consumes samples from the inner source and converts them to *B-format* samples.
 pub struct Bstream {
-    input: Box<Source<Item = f32> + Send>,
+    input: Box<dyn Source<Item = f32> + Send>,
     bridge: Arc<BstreamBridge>,
 
     bweights: Bweights,

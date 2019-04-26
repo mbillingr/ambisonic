@@ -6,6 +6,7 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/mbillingr/ambisonic"
 description = "Compose and play 3D audio."
 readme = "README.md"
+edition = "2018"
 
 categories = ["multimedia", "multimedia::audio", "game-engines"]
 keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]

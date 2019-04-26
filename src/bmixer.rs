@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use rodio::{source::UniformSourceIterator, Sample, Source};
 
-use bformat::Bformat;
-use bstream::{self, Bstream, SoundController};
+use crate::bformat::Bformat;
+use crate::bstream::{self, Bstream, SoundController};
 
 /// Construct a 3D sound mixer and associated sound composer.
 pub fn bmixer(sample_rate: u32) -> (BstreamMixer, Arc<BmixerComposer>) {
