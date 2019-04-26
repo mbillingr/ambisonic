@@ -1,5 +1,6 @@
 use rand::{
-    distributions::{Distribution, StandardNormal}, thread_rng,
+    distributions::{Distribution, StandardNormal},
+    thread_rng,
 };
 use rodio::Source;
 use std::time::Duration;

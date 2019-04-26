@@ -43,8 +43,6 @@
 //! sound.set_velocity([0.0, 0.0, 0.0]);
 //! ```
 
-
-
 pub use rodio;
 
 mod bformat;
@@ -102,7 +100,8 @@ impl AmbisonicBuilder {
 
     /// Build the ambisonic context
     pub fn build(self) -> Ambisonic {
-        let device = self.device
+        let device = self
+            .device
             .unwrap_or_else(|| rodio::default_output_device().unwrap());
         let sink = rodio::Sink::new(&device);
 

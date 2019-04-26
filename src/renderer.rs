@@ -244,7 +244,8 @@ where
 
                 let (mut left, mut right) = (0.0, 0.0);
 
-                for (speaker, buffer) in self.virtual_speakers
+                for (speaker, buffer) in self
+                    .virtual_speakers
                     .iter()
                     .zip(self.convolution_buffers.iter_mut())
                 {
@@ -279,6 +280,8 @@ struct VirtualSpeaker {
     right_hrir: Vec<f32>,
 }
 
+#[allow(clippy::excessive_precision)]
+#[allow(clippy::unreadable_literal)]
 impl Default for HrtfConfig {
     fn default() -> Self {
         HrtfConfig {

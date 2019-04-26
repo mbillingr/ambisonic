@@ -64,7 +64,8 @@ impl Iterator for BstreamMixer {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.controller.has_pending.load(Ordering::SeqCst) {
-            let mut pending = self.controller
+            let mut pending = self
+                .controller
                 .pending_streams
                 .lock()
                 .expect("Cannot lock pending streams");
