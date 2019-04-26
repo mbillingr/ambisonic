@@ -6,6 +6,7 @@ license = "MIT/Apache-2.0"
 repository = "https://github.com/mbillingr/ambisonic"
 description = "Compose and play 3D audio."
 readme = "README.md"
+edition = "2018"
 
 categories = ["multimedia", "multimedia::audio", "game-engines"]
 keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]
@@ -13,5 +14,5 @@ keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]
 [dependencies]
 cpal = "0.8"
 rodio = "0.8"
-rand = "0.5"
+rand = "0.6"
 

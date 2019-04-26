@@ -43,9 +43,7 @@
 //! sound.set_velocity([0.0, 0.0, 0.0]);
 //! ```
 
-extern crate cpal;
-extern crate rand;
-pub extern crate rodio;
+pub use rodio;
 
 mod bformat;
 mod bmixer;
@@ -56,9 +54,9 @@ pub mod sources;
 use std::f32;
 use std::sync::Arc;
 
-use bmixer::BmixerComposer;
-pub use bstream::SoundController;
-pub use renderer::{HrtfConfig, StereoConfig};
+use crate::bmixer::BmixerComposer;
+pub use crate::bstream::SoundController;
+pub use crate::renderer::{HrtfConfig, StereoConfig};
 
 /// Configure playback parameters
 pub enum PlaybackConfiguration {
@@ -102,7 +100,8 @@ impl AmbisonicBuilder {
 
     /// Build the ambisonic context
     pub fn build(self) -> Ambisonic {
-        let device = self.device
+        let device = self
+            .device
             .unwrap_or_else(|| rodio::default_output_device().unwrap());
         let sink = rodio::Sink::new(&device);
 

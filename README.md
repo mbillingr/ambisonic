@@ -2,9 +2,16 @@
 
 ## Compose and play 3D audio.
 
-The library provides 3D sound scene support on top of [`rodio`](https://crates.io/crates/rodio).
+The ambisonic library provides 3D sound scene support on top of [`rodio`](https://crates.io/crates/rodio).
 It allows positioning and moving sound sources freely in 3D space around a virtual listener,
 and playing the resulting spatial mix in real-time over a sound card.
+
+### Features:
+- Realistic directional audio
+- Take `rodio` sound sources and place them in space
+- Doppler effect on moving sounds
+
+### Technical Details
 
 `ambisonic` is built around the concept of an intermediate representation of the sound field,
 called *B-format*. The *B-format* describes what the listener should hear, independent of

@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use rodio::Source;
 
-use bformat::{Bformat, Bweights};
+use crate::bformat::{Bformat, Bweights};
 
 /// Convert a `rodio::Source` to a spatial `Bstream` source with associated controller
 ///
@@ -36,7 +36,7 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, S
         sampling_offset: 0.0,
         previous_sample: 0.0,
         next_sample: 0.0,
-        bridge: bridge,
+        bridge,
     };
 
     (stream, controller)
@@ -46,7 +46,7 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, S
 ///
 /// Consumes samples from the inner source and converts them to *B-format* samples.
 pub struct Bstream {
-    input: Box<Source<Item = f32> + Send>,
+    input: Box<dyn Source<Item = f32> + Send>,
     bridge: Arc<BstreamBridge>,
 
     bweights: Bweights,
@@ -215,7 +215,8 @@ impl SoundController {
 
         let relative_velocity = (self.position[0] * self.velocity[0]
             + self.position[1] * self.velocity[1]
-            + self.position[2] * self.velocity[2]) / dist;
+            + self.position[2] * self.velocity[2])
+            / dist;
 
         self.speed_of_sound / (self.speed_of_sound + self.doppler_factor * relative_velocity)
     }
