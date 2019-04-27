@@ -157,6 +157,11 @@ pub struct SoundController {
 
 impl SoundController {
     /// Set source position relative to listener
+    ///
+    /// Abruptly changing the position of a sound source may cause 
+    /// popping artifacts. Use this function only to set the source's
+    /// initial position, and dynamically adjust the position with
+    /// `adjust_position`.
     pub fn set_position(&mut self, pos: [f32; 3]) {
         self.position = pos;
         let weights = Bweights::from_position(pos);
@@ -171,7 +176,9 @@ impl SoundController {
     }
     /// Adjust source position relative to listener
     ///
-    /// The source transitions smoothly to the new position
+    /// The source transitions smoothly to the new position.
+    /// Use this function to dynamically change the position of a 
+    /// sound source while it is playing.
     pub fn adjust_position(&mut self, pos: [f32; 3]) {
         self.position = pos;
         let weights = Bweights::from_position(pos);
@@ -185,6 +192,10 @@ impl SoundController {
     }
 
     /// Set source velocity relative to listener
+    ///
+    /// The velocity determines how much doppler effect to apply
+    /// but has no effect on the source's position. Use 
+    /// `adjust_position` to update the source's position.
     pub fn set_velocity(&mut self, vel: [f32; 3]) {
         self.velocity = vel;
         let rate = self.doppler_rate();
