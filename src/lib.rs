@@ -54,14 +54,15 @@ it easy to implement arbitrary speaker configurations in the future.
 mod bformat;
 mod bmixer;
 mod bstream;
-pub mod constants;
 mod renderer;
-pub mod sources;
 
-use crate::bmixer::BmixerComposer;
-pub use crate::bstream::{BstreamConfig, SoundController};
-pub use crate::renderer::{HrtfConfig, StereoConfig};
+pub mod constants;
+pub mod sources;
+pub use bmixer::{bmixer, BmixerComposer, BstreamMixer};
+pub use bstream::{bstream, Bstream, BstreamConfig, SoundController};
+pub use renderer::{BstreamHrtfRenderer, BstreamStereoRenderer, HrtfConfig, StereoConfig};
 pub use rodio;
+
 use std::f32;
 use std::sync::Arc;
 
