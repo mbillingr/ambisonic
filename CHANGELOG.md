@@ -1,3 +1,14 @@
+<a name="0.3.0"></a>
+## 0.3.0 (2019-05-20)
+
+
+#### Features
+
+*   expose low-level structures ([ed4da4ef](https://github.com/mbillingr/ambisonic/commit/ed4da4ef4417f0296e339bb975a9e2e34803fa0f))
+*   new API - playback with initial position ([3af13174](https://github.com/mbillingr/ambisonic/commit/3af1317424d405c0935a4fb8fdf2a69966dc4ff1))
+
+
+
 <a name="0.2.1"></a>
 ## 0.2.1 (2018-07-29)
 
