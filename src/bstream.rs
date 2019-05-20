@@ -1,17 +1,19 @@
 //! Represent audio sources in *B-format*.
 
+use crate::bformat::{Bformat, Bweights};
+use crate::constants::SPEED_OF_SOUND;
+use rodio::Source;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use rodio::Source;
-
-use crate::bformat::{Bformat, Bweights};
-
 /// Convert a `rodio::Source` to a spatial `Bstream` source with associated controller
 ///
 /// The input source must produce `f32` samples and is expected to have exactly one channel.
-pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, SoundController) {
+pub fn bstream<I: Source<Item = f32> + Send + 'static>(
+    source: I,
+    config: BstreamConfig,
+) -> (Bstream, SoundController) {
     assert_eq!(source.channels(), 1);
 
     let bridge = Arc::new(BstreamBridge {
@@ -20,19 +22,29 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, S
         stopped: AtomicBool::new(false),
     });
 
+    let (position, weights) = match config.position {
+        Some(p) => (p, Bweights::from_position(p)),
+        None => ([0.0, 0.0, 0.0], Bweights::omni_source()),
+    };
+
     let controller = SoundController {
         bridge: bridge.clone(),
-        position: [0.0, 0.0, 0.0],
-        velocity: [0.0, 0.0, 0.0],
-        doppler_factor: 1.0,
-        speed_of_sound: 343.5, // m/s in air
+        position,
+        velocity: config.velocity,
+        doppler_factor: config.doppler_factor,
+        speed_of_sound: config.speed_of_sound,
     };
 
     let stream = Bstream {
         input: Box::new(source),
-        bweights: Bweights::omni_source(),
-        target_weights: Bweights::omni_source(),
-        speed: 1.0,
+        bweights: weights,
+        target_weights: weights,
+        speed: compute_doppler_rate(
+            position,
+            config.velocity,
+            config.doppler_factor,
+            config.speed_of_sound,
+        ),
         sampling_offset: 0.0,
         previous_sample: 0.0,
         next_sample: 0.0,
@@ -40,6 +52,56 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(source: I) -> (Bstream, S
     };
 
     (stream, controller)
+}
+
+/// Initial configuration for constructing `Bstream`s
+pub struct BstreamConfig {
+    position: Option<[f32; 3]>,
+    velocity: [f32; 3],
+    doppler_factor: f32,
+    speed_of_sound: f32,
+}
+
+impl Default for BstreamConfig {
+    fn default() -> Self {
+        BstreamConfig {
+            position: None,
+            velocity: [0.0, 0.0, 0.0],
+            doppler_factor: 1.0,
+            speed_of_sound: SPEED_OF_SOUND,
+        }
+    }
+}
+
+impl BstreamConfig {
+    /// Create new `BstreamConfig` with default settings.
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Set initial position relative to listener.
+    pub fn with_position(mut self, p: [f32; 3]) -> Self {
+        self.position = Some(p);
+        self
+    }
+
+    /// Set initial velocity.
+    pub fn with_velocity(mut self, v: [f32; 3]) -> Self {
+        self.velocity = v;
+        self
+    }
+
+    /// Set doppler factor for this stream.
+    pub fn with_doppler_factor(mut self, d: f32) -> Self {
+        self.doppler_factor = d;
+        self
+    }
+
+    /// Set speed of sound for this stream.
+    pub fn with_speed_of_sound(mut self, s: f32) -> Self {
+        self.speed_of_sound = s;
+        self
+    }
 }
 
 /// Spatial source
@@ -158,7 +220,7 @@ pub struct SoundController {
 impl SoundController {
     /// Set source position relative to listener
     ///
-    /// Abruptly changing the position of a sound source may cause 
+    /// Abruptly changing the position of a sound source may cause
     /// popping artifacts. Use this function only to set the source's
     /// initial position, and dynamically adjust the position with
     /// `adjust_position`.
@@ -177,7 +239,7 @@ impl SoundController {
     /// Adjust source position relative to listener
     ///
     /// The source transitions smoothly to the new position.
-    /// Use this function to dynamically change the position of a 
+    /// Use this function to dynamically change the position of a
     /// sound source while it is playing.
     pub fn adjust_position(&mut self, pos: [f32; 3]) {
         self.position = pos;
@@ -194,7 +256,7 @@ impl SoundController {
     /// Set source velocity relative to listener
     ///
     /// The velocity determines how much doppler effect to apply
-    /// but has no effect on the source's position. Use 
+    /// but has no effect on the source's position. Use
     /// `adjust_position` to update the source's position.
     pub fn set_velocity(&mut self, vel: [f32; 3]) {
         self.velocity = vel;
@@ -219,16 +281,27 @@ impl SoundController {
 
     /// compute doppler rate
     fn doppler_rate(&self) -> f32 {
-        let dist = (self.position[0] * self.position[0]
-            + self.position[1] * self.position[1]
-            + self.position[2] * self.position[2])
-            .sqrt();
-
-        let relative_velocity = (self.position[0] * self.velocity[0]
-            + self.position[1] * self.velocity[1]
-            + self.position[2] * self.velocity[2])
-            / dist;
-
-        self.speed_of_sound / (self.speed_of_sound + self.doppler_factor * relative_velocity)
+        compute_doppler_rate(
+            self.position,
+            self.velocity,
+            self.doppler_factor,
+            self.speed_of_sound,
+        )
     }
+}
+
+/// compute doppler rate
+fn compute_doppler_rate(
+    position: [f32; 3],
+    velocity: [f32; 3],
+    doppler_factor: f32,
+    speed_of_sound: f32,
+) -> f32 {
+    let dist =
+        (position[0] * position[0] + position[1] * position[1] + position[2] * position[2]).sqrt();
+
+    let relative_velocity =
+        (position[0] * velocity[0] + position[1] * velocity[1] + position[2] * velocity[2]) / dist;
+
+    speed_of_sound / (speed_of_sound + doppler_factor * relative_velocity)
 }

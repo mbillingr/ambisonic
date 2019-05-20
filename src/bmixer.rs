@@ -3,14 +3,12 @@
 //! This module provides functionality for dynamically composing sound sources into a 3D sound
 //! scene.
 
+use crate::bformat::Bformat;
+use crate::bstream::{self, Bstream, BstreamConfig, SoundController};
+use rodio::{source::UniformSourceIterator, Sample, Source};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-
-use rodio::{source::UniformSourceIterator, Sample, Source};
-
-use crate::bformat::Bformat;
-use crate::bstream::{self, Bstream, SoundController};
 
 /// Construct a 3D sound mixer and associated sound composer.
 pub fn bmixer(sample_rate: u32) -> (BstreamMixer, Arc<BmixerComposer>) {
@@ -103,15 +101,15 @@ impl BmixerComposer {
     /// Add a single-channel `Source` to the sound scene at a position relative to the listener
     ///
     /// Returns a controller object that can be used to control the source during playback.
-    pub fn play<I>(&self, input: I) -> SoundController
+    pub fn play<I>(&self, input: I, config: BstreamConfig) -> SoundController
     where
         I: Source<Item = f32> + Send + 'static,
     {
         let (bstream, sound_ctl) = if input.sample_rate() == self.sample_rate {
-            bstream::bstream(input)
+            bstream::bstream(input, config)
         } else {
             let input = UniformSourceIterator::new(input, 1, self.sample_rate);
-            bstream::bstream(input)
+            bstream::bstream(input, config)
         };
 
         self.pending_streams

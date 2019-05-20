@@ -1,62 +1,69 @@
-//! ## Compose and play 3D audio.
-//!
-//! The library provides 3D sound scene support on top of [`rodio`](https://crates.io/crates/rodio).
-//! It allows positioning and moving sound sources freely in 3D space around a virtual listener,
-//! and playing the resulting spatial mix in real-time over a sound card.
-//!
-//! `ambisonic` is built around the concept of an intermediate representation of the sound field,
-//! called *B-format*. The *B-format* describes what the listener should hear, independent of
-//! their audio playback equipment. This leads to a clear separation of audio scene composition and
-//! rendering. For details, see [Wikipedia](https://en.wikipedia.org/wiki/Ambisonics).
-//!
-//! In its current state, the library allows spatial composition of single-channel `rodio` sources
-//! into a first-order *B-format* stream. The chosen renderer then decodes the *B-format* stream
-//! into audio signals for playback.
-//!
-//! Currently, the following renderers are available:
-//!
-//! - Stereo: simple and efficient playback on two stereo speakers or headphones
-//! - HRTF: realistic 3D sound over headphones using head related transfer functions
-//!
-//! Although at the moment only stereo output is supported, the *B-format* abstraction should make
-//! it easy to implement arbitrary speaker configurations in the future.
-//!
-//! ## Usage Example
-//!
-//! ```
-//! use std::thread::sleep;
-//! use std::time::Duration;
-//! use ambisonic::{rodio, AmbisonicBuilder};
-//!
-//! let scene = AmbisonicBuilder::default().build();
-//!
-//! let source = rodio::source::SineWave::new(440);
-//! let mut sound = scene.play(source);
-//! sound.set_position([50.0, 1.0, 0.0]);
-//!
-//! // move sound from right to left
-//! sound.set_velocity([-10.0, 0.0, 0.0]);
-//! for i in 0..1000 {
-//!     sound.adjust_position([50.0 - i as f32 / 10.0, 1.0, 0.0]);
-//!     sleep(Duration::from_millis(10));
-//! }
-//! sound.set_velocity([0.0, 0.0, 0.0]);
-//! ```
+/*!
+## Compose and play 3D audio.
 
-pub use rodio;
+The ambisonic library provides 3D sound scene support on top of [`rodio`](https://crates.io/crates/rodio).
+It allows positioning and moving sound sources freely in 3D space around a virtual listener,
+and playing the resulting spatial mix in real-time over a sound card.
+
+### Features:
+- Realistic directional audio
+- Take `rodio` sound sources and place them in space
+- Doppler effect on moving sounds
+
+## Usage Example
+
+```rust
+use std::thread::sleep;
+use std::time::Duration;
+use ambisonic::{rodio, AmbisonicBuilder};
+
+let scene = AmbisonicBuilder::default().build();
+
+let source = rodio::source::SineWave::new(440);
+let mut sound = scene.play(source, [50.0, 1.0, 0.0]);
+
+// move sound from right to left
+sound.set_velocity([-10.0, 0.0, 0.0]);
+for i in 0..1000 {
+    sound.adjust_position([50.0 - i as f32 / 10.0, 1.0, 0.0]);
+    sleep(Duration::from_millis(10));
+}
+sound.set_velocity([0.0, 0.0, 0.0]);
+```
+
+### Technical Details
+
+`ambisonic` is built around the concept of an intermediate representation of the sound field,
+called *B-format*. The *B-format* describes what the listener should hear, independent of
+their audio playback equipment. This leads to a clear separation of audio scene composition and
+rendering. For details, see [Wikipedia](https://en.wikipedia.org/wiki/Ambisonics).
+
+In its current state, the library allows spatial composition of single-channel `rodio` sources
+into a first-order *B-format* stream. The chosen renderer then decodes the *B-format* stream
+into audio signals for playback.
+
+Currently, the following renderers are available:
+
+- Stereo: simple and efficient playback on two stereo speakers or headphones
+- HRTF: realistic 3D sound over headphones using head related transfer functions
+
+Although at the moment only stereo output is supported, the *B-format* abstraction should make
+it easy to implement arbitrary speaker configurations in the future.
+*/
 
 mod bformat;
 mod bmixer;
 mod bstream;
+pub mod constants;
 mod renderer;
 pub mod sources;
 
+use crate::bmixer::BmixerComposer;
+pub use crate::bstream::{BstreamConfig, SoundController};
+pub use crate::renderer::{HrtfConfig, StereoConfig};
+pub use rodio;
 use std::f32;
 use std::sync::Arc;
-
-use crate::bmixer::BmixerComposer;
-pub use crate::bstream::SoundController;
-pub use crate::renderer::{HrtfConfig, StereoConfig};
 
 /// Configure playback parameters
 pub enum PlaybackConfiguration {
@@ -171,12 +178,39 @@ impl Ambisonic {
     /// Add a single-channel `Source` to the sound scene at a position relative to the listener
     ///
     /// Returns a controller object that can be used to control the source during playback.
+    #[deprecated(
+        since = "0.3.0",
+        note = "please use one of the `play_*` methods instead"
+    )]
     #[inline(always)]
     pub fn play<I>(&self, input: I) -> SoundController
     where
         I: rodio::Source<Item = f32> + Send + 'static,
     {
-        self.composer.play(input)
+        self.play_omni(input)
+    }
+
+    /// Add a single-channel `Source` to the sound scene, initialized as omnidirectional.
+    ///
+    /// Returns a controller object that can be used to control the source during playback.
+    #[inline(always)]
+    pub fn play_omni<I>(&self, input: I) -> SoundController
+    where
+        I: rodio::Source<Item = f32> + Send + 'static,
+    {
+        self.composer.play(input, BstreamConfig::new())
+    }
+
+    /// Add a single-channel `Source` to the sound scene, initialized as omnidirectional.
+    ///
+    /// Returns a controller object that can be used to control the source during playback.
+    #[inline(always)]
+    pub fn play_at<I>(&self, input: I, pos: [f32; 3]) -> SoundController
+    where
+        I: rodio::Source<Item = f32> + Send + 'static,
+    {
+        self.composer
+            .play(input, BstreamConfig::new().with_position(pos))
     }
 }
 
@@ -191,13 +225,13 @@ mod tests {
         let engine = AmbisonicBuilder::new().build();
 
         let source = rodio::source::SineWave::new(440);
-        let mut first = engine.play(source);
+        let mut first = engine.play_omni(source);
 
         first.set_position([1.0, 0.0, 0.0]);
         sleep(Duration::from_millis(1000));
 
         let source = rodio::source::SineWave::new(330);
-        let mut second = engine.play(source);
+        let mut second = engine.play_omni(source);
 
         second.set_position([-1.0, 0.0, 0.0]);
         sleep(Duration::from_millis(1000));
@@ -216,8 +250,7 @@ mod tests {
         let scene = AmbisonicBuilder::default().build();
 
         let source = rodio::source::SineWave::new(440);
-        let mut sound = scene.play(source);
-        sound.set_position([50.0, 1.0, 0.0]);
+        let mut sound = scene.play_at(source, [50.0, 1.0, 0.0]);
 
         // move sound from right to left
         sound.set_velocity([-10.0, 0.0, 0.0]);
@@ -238,7 +271,7 @@ mod tests {
         for _ in 0..850 {
             f = (f + f * f * 7 + f * f * f * 3 + 1) % 800;
             let source = rodio::source::SineWave::new(440).amplify(0.001);
-            let _ = scene.play(source);
+            let _ = scene.play_omni(source);
         }
 
         sleep(Duration::from_secs(10));
@@ -251,7 +284,7 @@ mod tests {
 
         let source = sources::Noise::new(48000);
 
-        let mut sound = scene.play(source);
+        let mut sound = scene.play_at(source, [50.0, 1.0, 0.0]);
 
         for i in 0..1000 {
             sound.adjust_position([(500 - i) as f32 / 10.0, 1.0, 0.0]);
