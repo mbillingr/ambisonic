@@ -13,6 +13,6 @@ keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]
 
 [dependencies]
 cpal = "0.8"
-rodio = "0.8"
+rodio = "0.9"
 rand = "0.6"
 
