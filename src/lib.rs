@@ -238,6 +238,8 @@ mod tests {
         sleep(Duration::from_millis(1000));
 
         first.stop();
+        sleep(Duration::from_millis(1000));
+
         second.set_position([0.0, 1.0, 0.0]);
         sleep(Duration::from_millis(1000));
 
