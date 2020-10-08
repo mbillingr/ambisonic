@@ -10,6 +10,7 @@ edition = "2018"
 
 categories = ["multimedia", "multimedia::audio", "game-engines"]
 keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]
+include = ["src/**/*", "LICENSE-*", "README.md", "CHANGELOG.md"]
 
 [dependencies]
 cpal = "< 0.12, >= 0.8"
