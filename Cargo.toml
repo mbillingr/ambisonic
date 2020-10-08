@@ -12,7 +12,7 @@ categories = ["multimedia", "multimedia::audio", "game-engines"]
 keywords = ["audio", "ambisonics", "3D", "sound", "gamedev"]
 
 [dependencies]
-cpal = "0.8"
-rodio = "0.9"
+cpal = "< 0.12, >= 0.8"
+rodio = "< 0.12, >= 0.9"
 rand = {version = "0.7.3", features = ["small_rng"]}
 rand_distr = "0.3.0"
