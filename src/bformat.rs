@@ -7,8 +7,8 @@ use rodio::Sample;
 
 /// Audio sample in first-order *B-format*.
 ///
-/// It encodes four components of the sound field at the lister position: omnidirectional level `w`
-/// and the level gradient in `x`, `y`, and `z` directions.
+/// It encodes four components of the sound field at the listener position: omnidirectional level
+/// `w` and the level gradient in `x`, `y`, and `z` directions.
 #[derive(Debug, Copy, Clone)]
 pub struct Bformat {
     w: f32,
