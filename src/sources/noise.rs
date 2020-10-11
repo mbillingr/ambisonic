@@ -1,18 +1,17 @@
-use rand::{
-    distributions::{Distribution, StandardNormal},
-    thread_rng,
-};
+use rand::prelude::*;
+use rand_distr::StandardNormal;
 use rodio::Source;
 use std::time::Duration;
 
 /// Infinite white noise
 pub struct Noise {
     sample_rate: u32,
+    rng: SmallRng
 }
 
 impl Noise {
     pub fn new(sample_rate: u32) -> Self {
-        Noise { sample_rate }
+        Noise { sample_rate, rng: SmallRng::from_entropy() }
     }
 }
 
@@ -20,7 +19,7 @@ impl Iterator for Noise {
     type Item = f32;
 
     fn next(&mut self) -> Option<f32> {
-        Some(StandardNormal.sample(&mut thread_rng()) as f32)
+        Some(StandardNormal.sample(&mut self.rng))
     }
 }
 
