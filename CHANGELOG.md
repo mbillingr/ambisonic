@@ -1,3 +1,13 @@
+<a name="0.3.1"></a>
+## 0.3.1 (2020-10-26)
+
+
+#### Performance
+
+*   update and optimize Noise struct ([e2540a65](https://github.com/mbillingr/ambisonic/commit/e2540a651294e0b6d9043b61dde9b7f525f2ad41))
+
+
+
 <a name="0.3.0"></a>
 ## 0.3.0 (2019-05-20)
 
