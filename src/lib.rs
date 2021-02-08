@@ -108,10 +108,13 @@ impl AmbisonicBuilder {
 
     /// Build the ambisonic context
     pub fn build(self) -> Ambisonic {
-        let device = self
-            .device
-            .unwrap_or_else(|| rodio::default_output_device().unwrap());
-        let sink = rodio::Sink::new(&device);
+        let (stream, stream_handle) = if let Some(device) = self.device {
+            rodio::OutputStream::try_from_device(&device).unwrap()
+        } else {
+            rodio::OutputStream::try_default().unwrap()
+        };
+
+        let sink = rodio::Sink::try_new(&stream_handle).unwrap();
 
         let (mixer, controller) = bmixer::bmixer(self.sample_rate);
 
@@ -129,6 +132,7 @@ impl AmbisonicBuilder {
 
         Ambisonic {
             sink,
+            output_stream: stream,
             composer: controller,
         }
     }
@@ -169,9 +173,12 @@ impl Default for AmbisonicBuilder {
 ///
 /// Stops playing all sounds when dropped.
 pub struct Ambisonic {
-    // disable warning that `sink` is unused. We need it to keep the audio alive.
+    // We need to hold on to Sink and Stream to keep the Audio alive
     #[allow(dead_code)]
     sink: rodio::Sink,
+    #[allow(dead_code)]
+    output_stream: rodio::OutputStream,
+
     composer: Arc<BmixerComposer>,
 }
 

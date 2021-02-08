@@ -58,9 +58,7 @@ impl Sample for Bformat {
 
 // Why? Oh, why!?
 unsafe impl CpalSample for Bformat {
-    fn get_format() -> SampleFormat {
-        panic!("The B-format is not intended to be used as a CPAL sample directly. Use a renderer instead.")
-    }
+    const FORMAT: SampleFormat = SampleFormat::F32;
 
     fn to_f32(&self) -> f32 {
         panic!("The B-format is not intended to be used as a CPAL sample directly. Use a renderer instead.")
