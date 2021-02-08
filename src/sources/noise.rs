@@ -6,12 +6,15 @@ use std::time::Duration;
 /// Infinite white noise
 pub struct Noise {
     sample_rate: u32,
-    rng: SmallRng
+    rng: SmallRng,
 }
 
 impl Noise {
     pub fn new(sample_rate: u32) -> Self {
-        Noise { sample_rate, rng: SmallRng::from_entropy() }
+        Noise {
+            sample_rate,
+            rng: SmallRng::from_entropy(),
+        }
     }
 }
 
