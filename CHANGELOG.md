@@ -1,3 +1,13 @@
+<a name="0.4.0"></a>
+## 0.4.0 (2021-02-08)
+
+
+#### Features
+
+*   upgrade to rodio 0.13 ([c29eea39](https://github.com/mbillingr/ambisonic/commit/c29eea393cbcda8ced6db52f2977532517020574))
+
+
+
 <a name="0.3.1"></a>
 ## 0.3.1 (2020-10-26)
 
