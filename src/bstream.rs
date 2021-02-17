@@ -300,8 +300,44 @@ fn compute_doppler_rate(
     let dist =
         (position[0] * position[0] + position[1] * position[1] + position[2] * position[2]).sqrt();
 
-    let relative_velocity =
-        (position[0] * velocity[0] + position[1] * velocity[1] + position[2] * velocity[2]) / dist;
+    let relative_velocity;
+
+    if dist.abs() < EPS {
+        relative_velocity =
+            (velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2])
+                .sqrt();
+    } else {
+        relative_velocity =
+            (position[0] * velocity[0] + position[1] * velocity[1] + position[2] * velocity[2])
+                / dist;
+    }
 
     speed_of_sound / (speed_of_sound + doppler_factor * relative_velocity)
+}
+
+const EPS: f32 = 1e-6;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_doppler_effect_if_velocity_is_zero() {
+        let position = [0.0, 1.0, 0.0];
+        let velocity = [0.0, 0.0, 0.0];
+
+        let rate = compute_doppler_rate(position, velocity, 1.0, 1.0);
+
+        assert_eq!(rate, 1.0);
+    }
+
+    #[test]
+    fn doppler_effect_depends_on_velocity_if_position_is_zero() {
+        let position = [0.0, 0.0, 0.0];
+        let velocity = [1.0, 1.0, 1.0];
+
+        let rate = compute_doppler_rate(position, velocity, 1.0, 1.0);
+
+        assert_eq!(rate, 1.0 / (1.0 + f32::sqrt(3.0)));
+    }
 }
