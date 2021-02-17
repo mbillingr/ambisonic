@@ -272,34 +272,32 @@ impl SoundController {
     pub fn set_velocity(&mut self, vel: [f32; 3]) {
         self.velocity = vel;
         let rate = self.doppler_rate();
-        {
-            let mut cmds = self.bridge.commands.lock().unwrap();
-            cmds.push(Command::SetSpeed(rate));
-        }
-        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+        self.send_command(Command::SetSpeed(rate));
     }
 
     /// Stop playback
     pub fn stop(&self) {
-        self.bridge.commands.lock().unwrap().push(Command::Stop);
-        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+        self.send_command(Command::Stop);
     }
 
     /// Pause playback
     pub fn pause(&self) {
-        self.bridge.commands.lock().unwrap().push(Command::Pause);
-        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+        self.send_command(Command::Pause);
     }
 
     /// Resume playback
     pub fn resume(&self) {
-        self.bridge.commands.lock().unwrap().push(Command::Resume);
-        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+        self.send_command(Command::Resume);
     }
 
     /// Set doppler factor
     pub fn set_doppler_factor(&mut self, factor: f32) {
         self.doppler_factor = factor;
+    }
+
+    fn send_command(&self, cmd: Command) {
+        self.bridge.commands.lock().unwrap().push(cmd);
+        self.bridge.pending_commands.store(true, Ordering::SeqCst);
     }
 
     /// compute doppler rate
