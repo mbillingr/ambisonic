@@ -11,7 +11,7 @@ use std::time::Duration;
 ///
 /// The input source must produce `f32` samples and is expected to have exactly one channel.
 pub fn bstream<I: Source<Item = f32> + Send + 'static>(
-    source: I,
+    mut source: I,
     config: BstreamConfig,
 ) -> (Bstream, SoundController) {
     assert_eq!(source.channels(), 1);
@@ -36,7 +36,6 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(
     };
 
     let stream = Bstream {
-        input: Box::new(source),
         bweights: weights,
         target_weights: weights,
         speed: compute_doppler_rate(
@@ -46,9 +45,10 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(
             config.speed_of_sound,
         ),
         sampling_offset: 0.0,
-        previous_sample: 0.0,
-        next_sample: 0.0,
+        previous_sample: source.next().unwrap_or(0.0),
+        next_sample: source.next().unwrap_or(0.0),
         bridge,
+        input: Box::new(source),
     };
 
     (stream, controller)
@@ -320,6 +320,7 @@ const EPS: f32 = 1e-6;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sources::Ramp;
 
     #[test]
     fn no_doppler_effect_if_velocity_is_zero() {
@@ -339,5 +340,24 @@ mod tests {
         let rate = compute_doppler_rate(position, velocity, 1.0, 1.0);
 
         assert_eq!(rate, 1.0 / (1.0 + f32::sqrt(3.0)));
+    }
+
+    #[test]
+    fn sources_start_playing_with_first_sample() {
+        let (mut stream, _) = bstream(
+            Ramp::new(1),
+            BstreamConfig::new().with_position([1.0, 0.0, 0.0]),
+        );
+
+        let mut stream = extract_x_component(&mut stream);
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(1.0));
+        assert_eq!(stream.next(), Some(2.0));
+        assert_eq!(stream.next(), Some(3.0));
+    }
+
+    fn extract_x_component(stream: impl Iterator<Item = Bformat>) -> impl Iterator<Item = f32> {
+        stream.map(|bsample| Bweights::new(0.0, 1.0, 0.0, 0.0).dot(bsample))
     }
 }
