@@ -1,3 +1,20 @@
+<a name="0.4.1"></a>
+## 0.4.1 (2021-02-17)
+
+
+#### Bug Fixes
+
+*   no longer delay sources by two samples ([cff41bab](https://github.com/mbillingr/ambisonic/commit/cff41bab034d78b55783606cfd6acb02c1a5b972))
+*   omni sources can be played again ([f2089f6c](https://github.com/mbillingr/ambisonic/commit/f2089f6cddfa9d672d453eb6a79a57579feec24f))
+
+#### Features
+
+*   pause and resume sources ([05286720](https://github.com/mbillingr/ambisonic/commit/05286720caa291ada4e70cffaf7ee14952ed298c))
+*   "Ramp" sound source for testing and debugging ([c7d8c8aa](https://github.com/mbillingr/ambisonic/commit/c7d8c8aa8981ddbbf2484df97f7f61b50812e09d))
+*   "Constant" sound source for testing and debugging ([07a2be64](https://github.com/mbillingr/ambisonic/commit/07a2be64a5bad115568ed53872341bb1da8b3cf5))
+
+
+
 <a name="0.4.0"></a>
 ## 0.4.0 (2021-02-08)
 
