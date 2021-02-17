@@ -2,7 +2,7 @@
 
 use crate::bformat::{Bformat, Bweights};
 use crate::constants::SPEED_OF_SOUND;
-use rodio::Source;
+use rodio::{Sample, Source};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -49,6 +49,7 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(
         next_sample: source.next().unwrap_or(0.0),
         bridge,
         input: Box::new(source),
+        paused: false,
     };
 
     (stream, controller)
@@ -118,6 +119,7 @@ pub struct Bstream {
     sampling_offset: f32,
     previous_sample: f32,
     next_sample: f32,
+    paused: bool,
 }
 
 impl Bstream {}
@@ -161,10 +163,17 @@ impl Iterator for Bstream {
                         self.bridge.stopped.store(true, Ordering::SeqCst);
                         return None;
                     }
+                    Command::Pause => self.paused = true,
+                    Command::Resume => self.paused = false,
                 }
             }
 
             self.bridge.pending_commands.store(false, Ordering::SeqCst);
+        }
+
+        if self.paused {
+            self.bweights = self.target_weights; // during pause we can allow the source to jump
+            return Some(Bformat::zero_value());
         }
 
         // adjusting the weights slowly avoids audio artifacts but prevents very fast position
@@ -199,6 +208,8 @@ enum Command {
     SetTarget(Bweights),
     SetSpeed(f32),
     Stop,
+    Pause,
+    Resume,
 }
 
 /// Bridges a Bstream and its controller across threads
@@ -271,6 +282,18 @@ impl SoundController {
     /// Stop playback
     pub fn stop(&self) {
         self.bridge.commands.lock().unwrap().push(Command::Stop);
+        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+    }
+
+    /// Pause playback
+    pub fn pause(&self) {
+        self.bridge.commands.lock().unwrap().push(Command::Pause);
+        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+    }
+
+    /// Resume playback
+    pub fn resume(&self) {
+        self.bridge.commands.lock().unwrap().push(Command::Resume);
         self.bridge.pending_commands.store(true, Ordering::SeqCst);
     }
 
@@ -353,6 +376,47 @@ mod tests {
 
         assert_eq!(stream.next(), Some(0.0));
         assert_eq!(stream.next(), Some(1.0));
+        assert_eq!(stream.next(), Some(2.0));
+        assert_eq!(stream.next(), Some(3.0));
+    }
+
+    #[test]
+    fn pausing_a_source_makes_it_emit_zeros() {
+        let (mut stream, controller) = bstream(
+            Ramp::new(1),
+            BstreamConfig::new().with_position([1.0, 0.0, 0.0]),
+        );
+
+        let mut stream = extract_x_component(&mut stream);
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(1.0));
+
+        controller.pause();
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(0.0));
+    }
+
+    #[test]
+    fn resuming_a_source_makes_it_continue_where_it_paused() {
+        let (mut stream, controller) = bstream(
+            Ramp::new(1),
+            BstreamConfig::new().with_position([1.0, 0.0, 0.0]),
+        );
+
+        let mut stream = extract_x_component(&mut stream);
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(1.0));
+
+        controller.pause();
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(0.0));
+
+        controller.resume();
+
         assert_eq!(stream.next(), Some(2.0));
         assert_eq!(stream.next(), Some(3.0));
     }
