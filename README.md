@@ -8,6 +8,8 @@ https://crates.io/crates/ambisonic)
 [![Documentation](https://docs.rs/ambisonic/badge.svg)](
 https://docs.rs/ambisonic/0.4.0/ambisonic/)
 
+![Tests](https://github.com/mbillingr/ambisonic/workflows/Tests/badge.svg)
+
 The ambisonic library provides 3D sound scene support on top of [`rodio`](https://crates.io/crates/rodio).
 It allows positioning and moving sound sources freely in 3D space around a virtual listener,
 and playing the resulting spatial mix in real-time over a sound card.
