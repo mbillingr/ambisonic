@@ -2,7 +2,7 @@
 
 use crate::bformat::{Bformat, Bweights};
 use crate::constants::SPEED_OF_SOUND;
-use rodio::Source;
+use rodio::{Sample, Source};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -11,7 +11,7 @@ use std::time::Duration;
 ///
 /// The input source must produce `f32` samples and is expected to have exactly one channel.
 pub fn bstream<I: Source<Item = f32> + Send + 'static>(
-    source: I,
+    mut source: I,
     config: BstreamConfig,
 ) -> (Bstream, SoundController) {
     assert_eq!(source.channels(), 1);
@@ -36,7 +36,6 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(
     };
 
     let stream = Bstream {
-        input: Box::new(source),
         bweights: weights,
         target_weights: weights,
         speed: compute_doppler_rate(
@@ -46,9 +45,11 @@ pub fn bstream<I: Source<Item = f32> + Send + 'static>(
             config.speed_of_sound,
         ),
         sampling_offset: 0.0,
-        previous_sample: 0.0,
-        next_sample: 0.0,
+        previous_sample: source.next().unwrap_or(0.0),
+        next_sample: source.next().unwrap_or(0.0),
         bridge,
+        input: Box::new(source),
+        paused: false,
     };
 
     (stream, controller)
@@ -118,6 +119,7 @@ pub struct Bstream {
     sampling_offset: f32,
     previous_sample: f32,
     next_sample: f32,
+    paused: bool,
 }
 
 impl Bstream {}
@@ -161,10 +163,17 @@ impl Iterator for Bstream {
                         self.bridge.stopped.store(true, Ordering::SeqCst);
                         return None;
                     }
+                    Command::Pause => self.paused = true,
+                    Command::Resume => self.paused = false,
                 }
             }
 
             self.bridge.pending_commands.store(false, Ordering::SeqCst);
+        }
+
+        if self.paused {
+            self.bweights = self.target_weights; // during pause we can allow the source to jump
+            return Some(Bformat::zero_value());
         }
 
         // adjusting the weights slowly avoids audio artifacts but prevents very fast position
@@ -199,6 +208,8 @@ enum Command {
     SetTarget(Bweights),
     SetSpeed(f32),
     Stop,
+    Pause,
+    Resume,
 }
 
 /// Bridges a Bstream and its controller across threads
@@ -261,22 +272,32 @@ impl SoundController {
     pub fn set_velocity(&mut self, vel: [f32; 3]) {
         self.velocity = vel;
         let rate = self.doppler_rate();
-        {
-            let mut cmds = self.bridge.commands.lock().unwrap();
-            cmds.push(Command::SetSpeed(rate));
-        }
-        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+        self.send_command(Command::SetSpeed(rate));
     }
 
     /// Stop playback
     pub fn stop(&self) {
-        self.bridge.commands.lock().unwrap().push(Command::Stop);
-        self.bridge.pending_commands.store(true, Ordering::SeqCst);
+        self.send_command(Command::Stop);
+    }
+
+    /// Pause playback
+    pub fn pause(&self) {
+        self.send_command(Command::Pause);
+    }
+
+    /// Resume playback
+    pub fn resume(&self) {
+        self.send_command(Command::Resume);
     }
 
     /// Set doppler factor
     pub fn set_doppler_factor(&mut self, factor: f32) {
         self.doppler_factor = factor;
+    }
+
+    fn send_command(&self, cmd: Command) {
+        self.bridge.commands.lock().unwrap().push(cmd);
+        self.bridge.pending_commands.store(true, Ordering::SeqCst);
     }
 
     /// compute doppler rate
@@ -300,8 +321,105 @@ fn compute_doppler_rate(
     let dist =
         (position[0] * position[0] + position[1] * position[1] + position[2] * position[2]).sqrt();
 
-    let relative_velocity =
-        (position[0] * velocity[0] + position[1] * velocity[1] + position[2] * velocity[2]) / dist;
+    let relative_velocity;
+
+    if dist.abs() < EPS {
+        relative_velocity =
+            (velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2])
+                .sqrt();
+    } else {
+        relative_velocity =
+            (position[0] * velocity[0] + position[1] * velocity[1] + position[2] * velocity[2])
+                / dist;
+    }
 
     speed_of_sound / (speed_of_sound + doppler_factor * relative_velocity)
+}
+
+const EPS: f32 = 1e-6;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sources::Ramp;
+
+    #[test]
+    fn no_doppler_effect_if_velocity_is_zero() {
+        let position = [0.0, 1.0, 0.0];
+        let velocity = [0.0, 0.0, 0.0];
+
+        let rate = compute_doppler_rate(position, velocity, 1.0, 1.0);
+
+        assert_eq!(rate, 1.0);
+    }
+
+    #[test]
+    fn doppler_effect_depends_on_velocity_if_position_is_zero() {
+        let position = [0.0, 0.0, 0.0];
+        let velocity = [1.0, 1.0, 1.0];
+
+        let rate = compute_doppler_rate(position, velocity, 1.0, 1.0);
+
+        assert_eq!(rate, 1.0 / (1.0 + f32::sqrt(3.0)));
+    }
+
+    #[test]
+    fn sources_start_playing_with_first_sample() {
+        let (mut stream, _) = bstream(
+            Ramp::new(1),
+            BstreamConfig::new().with_position([1.0, 0.0, 0.0]),
+        );
+
+        let mut stream = extract_x_component(&mut stream);
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(1.0));
+        assert_eq!(stream.next(), Some(2.0));
+        assert_eq!(stream.next(), Some(3.0));
+    }
+
+    #[test]
+    fn pausing_a_source_makes_it_emit_zeros() {
+        let (mut stream, controller) = bstream(
+            Ramp::new(1),
+            BstreamConfig::new().with_position([1.0, 0.0, 0.0]),
+        );
+
+        let mut stream = extract_x_component(&mut stream);
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(1.0));
+
+        controller.pause();
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(0.0));
+    }
+
+    #[test]
+    fn resuming_a_source_makes_it_continue_where_it_paused() {
+        let (mut stream, controller) = bstream(
+            Ramp::new(1),
+            BstreamConfig::new().with_position([1.0, 0.0, 0.0]),
+        );
+
+        let mut stream = extract_x_component(&mut stream);
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(1.0));
+
+        controller.pause();
+
+        assert_eq!(stream.next(), Some(0.0));
+        assert_eq!(stream.next(), Some(0.0));
+
+        controller.resume();
+
+        assert_eq!(stream.next(), Some(2.0));
+        assert_eq!(stream.next(), Some(3.0));
+    }
+
+    fn extract_x_component(stream: impl Iterator<Item = Bformat>) -> impl Iterator<Item = f32> {
+        stream.map(|bsample| Bweights::new(0.0, 1.0, 0.0, 0.0).dot(bsample))
+    }
 }
