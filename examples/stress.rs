@@ -2,7 +2,6 @@
 Playing many sources simultaneously will lead to stuttering if compiled in Debug mode
 but hopefully not in Release mode.
 */
-
 use ambisonic::AmbisonicBuilder;
 use std::thread::sleep;
 use std::time::Duration;

@@ -12,7 +12,7 @@ and playing the resulting spatial mix in real-time over a sound card.
 
 ## Usage Example
 
-```rust
+```no_run
 use std::thread::sleep;
 use std::time::Duration;
 use ambisonic::{rodio, AmbisonicBuilder};
