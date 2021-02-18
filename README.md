@@ -6,7 +6,7 @@ https://github.com/mbillingr/ambisonic#license)
 [![Cargo](https://img.shields.io/crates/v/ambisonic.svg)](
 https://crates.io/crates/ambisonic)
 [![Documentation](https://docs.rs/ambisonic/badge.svg)](
-https://docs.rs/ambisonic/0.4.0/ambisonic/)
+https://docs.rs/ambisonic/latest/ambisonic/)
 
 ![Tests](https://github.com/mbillingr/ambisonic/workflows/Tests/badge.svg)
 
@@ -28,7 +28,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ambisonic = "0.4.0"
+ambisonic = "0.4"
 ```
 
 ## Usage Example
