@@ -18,6 +18,7 @@ and playing the resulting spatial mix in real-time over a sound card.
 - Realistic directional audio
 - Take `rodio` sound sources and place them in space
 - Doppler effect on moving sounds
+- Audio timing based on sos(speed-of-sound)
 
 ### Gallery
 - [Video](https://www.youtube.com/watch?v=LrLn5t2zEp4) that demonstrates spatial audio in a 3D graphics scene by [@bjadamson](https://github.com/bjadamson)
